@@ -1768,7 +1768,7 @@ function draw(){
   if(rageMode){
     const rageAlpha=.5+.5*Math.sin(frameCount*.2);
     ctx.fillStyle=`rgba(255,0,0,${rageAlpha*.3})`;ctx.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('🔥 疯狂模式 🔥',W/2,88);
+    ctx.fillText('🔥 疯狗模式 🔥',W/2,88);
   }
 
   // Right side UI
@@ -1792,7 +1792,7 @@ function draw(){
   // Difficulty indicator
   ctx.fillStyle=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowColor=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowBlur=5;
   ctx.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(difficulty==='rookie'?'新手上路':difficulty==='veteran'?'老兵':'疯狂',W-12,88);ctx.shadowBlur=0;
+  ctx.fillText(difficulty==='rookie'?'新手上路':difficulty==='veteran'?'老兵':'疯狗',W-12,88);ctx.shadowBlur=0;
 
   // Level/wave info
   if(!boss&&state===STATE.PLAYING){
@@ -1918,7 +1918,7 @@ function draw(){
     ctx.fillStyle='rgba(255,255,255,.5)';
     ctx.fillText('新手上路：尽情爽玩，火力全开！',W/2,H/2-52);
     ctx.fillText('老兵：朋友认真了，注意闪避！',W/2,H/2-25);
-    ctx.fillText('疯狂：地狱难度，极限生存！',W/2,H/2+2);
+    ctx.fillText('疯狗：地狱难度，极限生存！',W/2,H/2+2);
     // Rookie button
     const rGlow=difficulty==='rookie'?30:0;
     ctx.fillStyle='#27ae60';ctx.shadowColor='#27ae60';ctx.shadowBlur=rGlow;
