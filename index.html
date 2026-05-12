@@ -47,6 +47,13 @@ html,body{
   display:none;transition:all .2s
 }
 #bomb-btn:active{transform:scale(.9);box-shadow:0 0 35px rgba(230,126,34,.8)}
+#exit-btn{
+  background:rgba(0,0,0,.7);color:#fff;border:1px solid rgba(255,255,255,.25);
+  padding:8px 18px;font-size:13px;border-radius:25px;cursor:pointer;
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;display:none;
+  transition:all .2s;
+}
+#exit-btn:active{background:rgba(255,0,0,.5);border-color:#ff4444;transform:scale(.95)}
 #mobile-hint{color:rgba(255,255,255,.5);font-size:13px;font-family:"PingFang SC","Microsoft YaHei",sans-serif;display:none}
 #crt-overlay{
   position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100;
@@ -64,39 +71,46 @@ html,body{
 <div id="ui">
   <button id="start-btn">挑战朋友</button>
   <button id="bomb-btn">💣</button>
+  <button id="exit-btn">✕ 退出</button>
   <div id="mobile-hint">📱 滑动屏幕操控飞机</div>
 </div>
 <div id="crt-overlay"></div>
 <script>
-// ==================== AUDIO ENGINE ====================
+// ==================== AUDIO ENGINE (iOS FIXED) ====================
 let audioCtx=null,audioUnlocked=false;
 function initAudio(){
+  if(audioCtx)return;
   try{
-    if(!audioCtx){
-      const AC=window.AudioContext||window.webkitAudioContext;
-      if(!AC)return;
-      audioCtx=new AC();
-    }
-    if(audioCtx.state==='suspended'){
-      audioCtx.resume().then(()=>{
-        // iOS: play silent buffer to fully unlock audio
-        if(!audioUnlocked){
-          const buf=audioCtx.createBuffer(1,2,22050);
-          const src=audioCtx.createBufferSource();src.buffer=buf;
-          src.connect(audioCtx.destination);
-          src.start(0);src.stop(audioCtx.currentTime+.001);
-          audioUnlocked=true;
-        }
-      }).catch(()=>{});
-    }else if(!audioUnlocked&&audioCtx.state==='running'){
-      audioUnlocked=true;
-    }
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    audioCtx=new AC();
+    if(audioCtx.state==='suspended')audioCtx.resume();
   }catch(e){audioCtx=null}
 }
-// iOS 需要用户交互才能播放声音，在每个交互事件都尝试恢复
 function forceAudio(){
+  if(!audioCtx){initAudio();return}
+  if(audioCtx.state==='suspended'){
+    audioCtx.resume().then(()=>{audioUnlocked=true}).catch(()=>{});
+  }else if(audioCtx.state==='running'){
+    audioUnlocked=true;
+  }
+}
+// iOS requires synchronous AudioContext creation inside user gesture
+function unlockAudio(){
+  if(audioUnlocked)return;
   if(!audioCtx)initAudio();
-  else if(audioCtx.state!=='running')audioCtx.resume().catch(()=>{});
+  if(!audioCtx)return;
+  // Play silent buffer to fully unlock iOS audio
+  try{
+    const buf=audioCtx.createBuffer(1,1,22050);
+    const src=audioCtx.createBufferSource();
+    src.buffer=buf;src.connect(audioCtx.destination);
+    src.start(0);src.stop(audioCtx.currentTime+.001);
+    audioUnlocked=true;
+  }catch(e){}
+  if(audioCtx.state==='suspended'){
+    audioCtx.resume().then(()=>{audioUnlocked=true}).catch(()=>{});
+  }
 }
 function playBeep(freq,type,dur,vol=.1,slide=0){
   if(!audioCtx)return;
@@ -226,7 +240,7 @@ window.addEventListener('keydown',e=>{keys[e.key]=true;e.preventDefault()});
 window.addEventListener('keyup',e=>{keys[e.key]=false});
 
 canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();initAudio();enterFullscreen();
+  e.preventDefault();unlockAudio();enterFullscreen();
   const gp=getGamePos(e.touches[0].clientX,e.touches[0].clientY);
   if(state===STATE.MENU){startGame()}
   else if(state===STATE.GAME_OVER||state===STATE.VICTORY){resetGame()}
@@ -241,7 +255,7 @@ canvas.addEventListener('touchmove',e=>{
 },{passive:false});
 canvas.addEventListener('touchend',e=>{e.preventDefault();touchActive=false},{passive:false});
 canvas.addEventListener('click',e=>{
-  initAudio();enterFullscreen();
+  unlockAudio();enterFullscreen();
   const gp=getGamePos(e.clientX,e.clientY);
   if(state===STATE.MENU){startGame()}
   else if(state===STATE.GAME_OVER||state===STATE.VICTORY){resetGame()}
@@ -249,24 +263,35 @@ canvas.addEventListener('click',e=>{
 });
 // HTML按钮也需要处理游戏逻辑
 document.getElementById('start-btn').addEventListener('click',()=>{
-  initAudio();enterFullscreen();
+  unlockAudio();enterFullscreen();
   if(state===STATE.MENU)startGame();
   else if(state===STATE.GAME_OVER||state===STATE.VICTORY)resetGame();
 });
 document.getElementById('start-btn').addEventListener('touchstart',e=>{
   e.preventDefault();e.stopPropagation();
-  initAudio();enterFullscreen();
+  unlockAudio();enterFullscreen();
   if(state===STATE.MENU)startGame();
   else if(state===STATE.GAME_OVER||state===STATE.VICTORY)resetGame();
 },{passive:false});
 document.getElementById('bomb-btn').addEventListener('click',()=>{
-  initAudio();enterFullscreen();
+  unlockAudio();enterFullscreen();
   if(state===STATE.PLAYING)useBomb();
 });
 document.getElementById('bomb-btn').addEventListener('touchstart',e=>{
   e.preventDefault();e.stopPropagation();
-  initAudio();enterFullscreen();
+  unlockAudio();enterFullscreen();
   if(state===STATE.PLAYING)useBomb();
+},{passive:false});
+// Exit button — return to menu
+function exitToMenu(){
+  state=STATE.MENU;boss=null;enemies.length=0;bullets.length=0;
+  powerUps.length=0;particles.length=0;particleIndex=0;
+  rageMode=false;rageTimer=0;comboCount=0;comboDisplay=0;
+  player=new Player();
+}
+document.getElementById('exit-btn').addEventListener('click',()=>{exitToMenu()});
+document.getElementById('exit-btn').addEventListener('touchstart',e=>{
+  e.preventDefault();e.stopPropagation();exitToMenu();
 },{passive:false});
 // 阻止长按菜单
 document.addEventListener('contextmenu',e=>{e.preventDefault()});
@@ -280,7 +305,7 @@ function handleDiffTap(x,y){
 }
 
 // ==================== PARTICLE SYSTEM ====================
-const MAX_PARTICLES=200;
+const MAX_PARTICLES=160;
 const particles=[];
 let particleIndex=0;
 
@@ -616,32 +641,42 @@ class Player{
     const rage=rageMode;
     const w=this.w,h=this.h;
 
-    // === ENGINE FLAMES (behind body, drawn first) ===
-    // Central main thruster — large dynamic flame
-    const fl=Math.sin(this.engineFlame)*8+22;
-    const mainFlameG=ctx.createLinearGradient(0,h/2-6,0,h/2+fl);
-    mainFlameG.addColorStop(0,rage?'#ffaa00':'#7df9ff');
-    mainFlameG.addColorStop(0.2,rage?'#ff6600':'#00bfff');
-    mainFlameG.addColorStop(0.5,rage?'#ff2200':'#1e90ff');
-    mainFlameG.addColorStop(0.8,rage?'#990000':'#0044aa');
-    mainFlameG.addColorStop(1,'transparent');
-    ctx.fillStyle=mainFlameG;
-    ctx.beginPath();ctx.moveTo(-6,h/2-6);
-    ctx.quadraticCurveTo(-3,h/2+fl*0.4,0,h/2+fl);
-    ctx.quadraticCurveTo(3,h/2+fl*0.4,6,h/2-6);ctx.fill();
+    // === ENGINE FLAMES (epic sci-fi thrusters) ===
+    const fl=Math.sin(this.engineFlame)*10+28;
+    // Outer flame plume — large and dramatic
+    const flOuter=ctx.createLinearGradient(0,h/2-4,0,h/2+fl);
+    flOuter.addColorStop(0,'rgba(255,255,255,0.9)');
+    flOuter.addColorStop(0.08,rage?'#ffaa00':'#7df9ff');
+    flOuter.addColorStop(0.25,rage?'#ff5500':'#00aaff');
+    flOuter.addColorStop(0.55,rage?'#cc0000':'#0055cc');
+    flOuter.addColorStop(0.85,rage?'#660000':'#002266');
+    flOuter.addColorStop(1,'transparent');
+    ctx.fillStyle=flOuter;
+    ctx.beginPath();ctx.moveTo(-8,h/2-4);
+    ctx.quadraticCurveTo(-4,h/2+fl*0.3,0,h/2+fl);
+    ctx.quadraticCurveTo(4,h/2+fl*0.3,8,h/2-4);ctx.fill();
 
-    // Side thruster flames (2 smaller)
-    for(let sx=-9;sx<=9;sx+=18){
-      const sf=fl*(0.55+0.2*Math.sin(frameCount*0.35+sx));
+    // Inner bright core
+    const flInner=ctx.createLinearGradient(0,h/2-2,0,h/2+fl*.55);
+    flInner.addColorStop(0,'#fff');flInner.addColorStop(0.3,'#ff0');flInner.addColorStop(1,'transparent');
+    ctx.fillStyle=flInner;
+    ctx.beginPath();ctx.moveTo(-3,h/2-2);
+    ctx.quadraticCurveTo(-1.5,h/2+fl*0.3,0,h/2+fl*.55);
+    ctx.quadraticCurveTo(1.5,h/2+fl*0.3,3,h/2-2);ctx.fill();
+
+    // Side thrusters (2 smaller)
+    for(let sx=-10;sx<=10;sx+=20){
+      const sf=fl*(0.5+0.25*Math.sin(frameCount*0.35+sx));
       const sg=ctx.createLinearGradient(sx,h/2-2,sx,h/2+sf);
-      sg.addColorStop(0,rage?'#ffcc00':'#e0f8ff');sg.addColorStop(1,'transparent');
+      sg.addColorStop(0,'#fff');sg.addColorStop(0.15,rage?'#ffcc00':'#e0f8ff');sg.addColorStop(0.5,rage?'#ff4400':'#0088cc');sg.addColorStop(1,'transparent');
       ctx.fillStyle=sg;
-      ctx.beginPath();ctx.moveTo(sx-2.5,h/2-2);ctx.lineTo(sx,h/2+sf);ctx.lineTo(sx+2.5,h/2-2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(sx-3,h/2-2);ctx.quadraticCurveTo(sx,h/2+sf*.4,sx,h/2+sf);ctx.quadraticCurveTo(sx+1,h/2+sf*.4,sx+3,h/2-2);ctx.fill();
     }
-    // Spawn engine particles
+    // Engine particles
     if(!isTrail&&frameCount%2===0){
-      spawnEngineParticle(this.x,this.y+h/2);
-      if(rage){spawnEngineParticle(this.x+Math.random()*8-4,this.y+h/2+6);spawnEngineParticle(this.x+Math.random()*6-3,this.y+h/2+4)}
+      for(let i=0;i<(rage?3:1);i++){
+        spawnEngineParticle(this.x+Math.random()*8-4,this.y+h/2+Math.random()*fl*.5);
+      }
     }
 
     // === MAIN FUSELAGE ===
@@ -1122,77 +1157,126 @@ class Boss{
     innerAura.addColorStop(0,auraColor+'60');innerAura.addColorStop(1,'transparent');
     ctx.fillStyle=innerAura;ctx.beginPath();ctx.arc(0,0,35,0,Math.PI*2);ctx.fill();
 
-    // ===== PROCEDURAL 2D BOSS BODY =====
+    // ===== PROCEDURAL 2D BOSS BODY (ENHANCED) =====
     const c=this.color;const ra=1-hpPct;const angy=ra>.3?Math.sin(this.animTime*6)*ra*4:0;
-    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.ellipse(0,42,36,10,0,0,Math.PI*2);ctx.fill();
-    const jfH=Math.sin(this.animTime*5)*5+14;const jfG=ctx.createLinearGradient(0,32,0,32+jfH);
-    jfG.addColorStop(0,c.glow);jfG.addColorStop(0.3,ra>.5?'#ff4400':'#ffaa00');jfG.addColorStop(0.7,'#ff2200');jfG.addColorStop(1,'transparent');
-    ctx.fillStyle=jfG;ctx.beginPath();ctx.moveTo(-8,32);ctx.lineTo(8,32);ctx.lineTo(12,32+jfH);ctx.lineTo(-12,32+jfH);ctx.closePath();ctx.fill();
-    const bodyG=ctx.createLinearGradient(0,-22,0,26);
-    bodyG.addColorStop(0,c.accent);bodyG.addColorStop(0.4,c.body);bodyG.addColorStop(0.55,'#0a0a0a');bodyG.addColorStop(1,c.body);
-    ctx.fillStyle=bodyG;ctx.beginPath();ctx.moveTo(-28,8);ctx.lineTo(-24,-14);ctx.lineTo(-10,-21);
-    ctx.lineTo(10,-21);ctx.lineTo(24,-14);ctx.lineTo(28,8);ctx.lineTo(22,26);ctx.lineTo(-22,26);ctx.closePath();ctx.fill();
-    ctx.strokeStyle=c.accent;ctx.lineWidth=2;ctx.stroke();
+
+    // Energy orbit ring — particles spinning around boss
+    for(let i=0;i<5;i++){
+      const orbitAngle=this.animTime*1.8+i*Math.PI*2/5;
+      const orbitR=48+Math.sin(this.animTime*3+i)*8;
+      const ox=Math.cos(orbitAngle)*orbitR,oy=Math.sin(orbitAngle)*orbitR;
+      const orbG=ctx.createRadialGradient(ox,oy,1,ox,oy,5);
+      orbG.addColorStop(0,'#fff');orbG.addColorStop(0.4,auraColor);orbG.addColorStop(1,'transparent');
+      ctx.fillStyle=orbG;ctx.beginPath();ctx.arc(ox,oy,5,0,Math.PI*2);ctx.fill();
+    }
+
+    // Shadow under boss
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.beginPath();ctx.ellipse(0,46,40,12,0,0,Math.PI*2);ctx.fill();
+
+    // Jet flame below boss (idle hover thrusters)
+    const jfH=Math.sin(this.animTime*5)*8+18;
+    const jfG=ctx.createLinearGradient(0,34,0,34+jfH);
+    jfG.addColorStop(0,c.glow);jfG.addColorStop(0.25,ra>.5?'#ff4400':'#ffaa00');jfG.addColorStop(0.6,'#ff2200');jfG.addColorStop(1,'transparent');
+    ctx.fillStyle=jfG;ctx.beginPath();ctx.moveTo(-10,34);ctx.lineTo(10,34);ctx.lineTo(14,34+jfH);ctx.lineTo(-14,34+jfH);ctx.closePath();ctx.fill();
+
+    // Main body — darker, more metallic with chiseled shape
+    const bodyG=ctx.createLinearGradient(0,-26,0,30);
+    bodyG.addColorStop(0,'#2a2a2a');bodyG.addColorStop(0.15,c.accent);bodyG.addColorStop(0.35,c.body);bodyG.addColorStop(0.5,'#0a0a0a');bodyG.addColorStop(0.7,c.body);bodyG.addColorStop(1,'#1a1a1a');
+    ctx.fillStyle=bodyG;ctx.beginPath();
+    ctx.moveTo(-32,6);ctx.lineTo(-26,-18);ctx.lineTo(-10,-26);ctx.quadraticCurveTo(0,-28,10,-26);
+    ctx.lineTo(26,-18);ctx.lineTo(32,6);ctx.lineTo(24,30);ctx.lineTo(-24,30);
+    ctx.closePath();ctx.fill();
+    ctx.strokeStyle=c.accent;ctx.lineWidth=2.5;ctx.stroke();
+
+    // Inner dark chest cavity
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();
+    ctx.moveTo(-16,-8);ctx.lineTo(-20,16);ctx.lineTo(20,16);ctx.lineTo(16,-8);ctx.closePath();ctx.fill();
+    // Core reactor glow in chest
+    const coreG=ctx.createRadialGradient(0,12,3,0,12,16);
+    coreG.addColorStop(0,'#fff');coreG.addColorStop(0.2,auraColor);coreG.addColorStop(0.5,c.glow);coreG.addColorStop(1,'transparent');
+    ctx.fillStyle=coreG;ctx.beginPath();ctx.arc(0,12,14+Math.sin(this.animTime*3)*2,0,Math.PI*2);ctx.fill();
+
+    // Shoulder armor plates
     ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(-30,8);ctx.lineTo(-46,0);ctx.lineTo(-44,16);ctx.lineTo(-28,18);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.beginPath();ctx.moveTo(30,8);ctx.lineTo(46,0);ctx.lineTo(44,16);ctx.lineTo(28,18);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle=c.glow;
-    ctx.beginPath();ctx.moveTo(-44,2);ctx.lineTo(-52+angy,-4);ctx.lineTo(-40,8);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(44,2);ctx.lineTo(52-angy,-4);ctx.lineTo(40,8);ctx.closePath();ctx.fill();
-    ctx.strokeStyle=c.glow;ctx.lineWidth=2.5;ctx.globalAlpha=0.7;
-    ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(-7,4);ctx.moveTo(0,-14);ctx.lineTo(7,4);ctx.stroke();ctx.globalAlpha=1;
-    ctx.strokeStyle=c.glow;ctx.lineWidth=1;ctx.globalAlpha=0.35;
-    ctx.beginPath();ctx.moveTo(-14,-16);ctx.lineTo(-14,14);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(14,-16);ctx.lineTo(14,14);ctx.stroke();ctx.globalAlpha=1;
-    const aL=this.armL*14,aR=this.armR*14;
-    for(let s=-1;s<=1;s+=2){const ax=s*28,ay=10,ah=s>0?aR:aL;
-      ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-s*20+ah,20+ah*.4);ctx.lineTo(ax-s*14+ah,28+ah*.3);
-      ctx.lineTo(ax-s*4,24);ctx.closePath();ctx.fill();ctx.stroke();
-      const fx=ax-s*18+ah,fy=24+ah*.35;ctx.fillStyle=c.glow;
-      ctx.beginPath();ctx.arc(fx,fy,5+Math.abs(ah)*.3,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(fx,fy,5+Math.abs(ah)*.3,0,Math.PI*2);ctx.stroke();
-      const fistG=ctx.createRadialGradient(fx,fy,1,fx,fy,7);
-      fistG.addColorStop(0,'#fff');fistG.addColorStop(0.5,c.glow);fistG.addColorStop(1,'transparent');
-      ctx.fillStyle=fistG;ctx.beginPath();ctx.arc(fx,fy,7,0,Math.PI*2);ctx.fill();
-    }
-    const lL=this.legL*10,lR=this.legR*10;
-    for(let s=-1;s<=1;s+=2){const lx=s*18,ly=26,lh=s>0?lR:lL;
-      ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx-s*4+lh*.2,44+lh);ctx.lineTo(lx+s*6+lh*.2,46+lh);
-      ctx.lineTo(lx+s*4,26);ctx.closePath();ctx.fill();ctx.stroke();
+    for(let s=-1;s<=1;s+=2){
+      ctx.beginPath();ctx.moveTo(s*28,4);ctx.lineTo(s*46,-4);ctx.lineTo(s*42,18);ctx.lineTo(s*26,20);ctx.closePath();ctx.fill();ctx.stroke();
+      // Shoulder spike
       ctx.fillStyle=c.accent;
-      ctx.beginPath();ctx.moveTo(lx-s*4+lh*.2,44+lh);ctx.lineTo(lx-s*10+lh*.2,50+lh);ctx.lineTo(lx+s*10+lh*.2,50+lh);
-      ctx.lineTo(lx+s*6+lh*.2,46+lh);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(s*40,-6);ctx.lineTo(s*50+angy*s,-14);ctx.lineTo(s*36,0);ctx.closePath();ctx.fill();
     }
-    const headG=ctx.createLinearGradient(0,-23,0,-5);
-    headG.addColorStop(0,c.accent);headG.addColorStop(1,c.body);
-    ctx.fillStyle=headG;ctx.beginPath();ctx.ellipse(0,-18,17,20,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=c.accent;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,-18,17,20,0,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle=c.glow;for(let i=-2;i<=2;i++){const cx=i*7,ch=16+Math.abs(i)*5;
-      ctx.beginPath();ctx.moveTo(cx-2,-34);ctx.lineTo(cx+2,-34);ctx.lineTo(cx,-34-ch);ctx.closePath();ctx.fill();
+
+    // Body panel lines
+    ctx.strokeStyle=c.accent;ctx.lineWidth=1;ctx.globalAlpha=0.4;
+    ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(0,-2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-12,-16);ctx.lineTo(-12,18);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(12,-16);ctx.lineTo(12,18);ctx.stroke();ctx.globalAlpha=1;
+
+    // Animated arms with energy fists
+    const aL=this.armL*14,aR=this.armR*14;
+    for(let s=-1;s<=1;s+=2){const ax=s*28,ay=12,ah=s>0?aR:aL;
+      ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-s*22+ah,22+ah*.5);ctx.lineTo(ax-s*14+ah,32+ah*.4);
+      ctx.lineTo(ax-s*2,26);ctx.closePath();ctx.fill();ctx.stroke();
+      // Energy fist
+      const fx=ax-s*18+ah,fy=28+ah*.4;
+      const fistG=ctx.createRadialGradient(fx,fy,2,fx,fy,10);
+      fistG.addColorStop(0,'#fff');fistG.addColorStop(0.3,c.glow);fistG.addColorStop(1,'transparent');
+      ctx.fillStyle=fistG;ctx.beginPath();ctx.arc(fx,fy,10+Math.abs(ah)*.4,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(fx,fy,6,0,Math.PI*2);ctx.stroke();
     }
-    const eSp=7+ra*2,eW=4+ra*2,eH=3+ra*3;
-    ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(-eSp,-20,eW+1,eH+1,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(eSp,-20,eW+1,eH+1,0,0,Math.PI*2);ctx.fill();
-    const eG=ctx.createRadialGradient(-eSp,-21,0,-eSp,-20,eW);
-    eG.addColorStop(0,'#fff');eG.addColorStop(0.3,'#ff0');eG.addColorStop(1,c.glow);
-    ctx.fillStyle=eG;ctx.beginPath();ctx.ellipse(-eSp,-20,eW,eH,-0.3,0,Math.PI*2);ctx.fill();
-    const eG2=ctx.createRadialGradient(eSp,-21,0,eSp,-20,eW);
-    eG2.addColorStop(0,'#fff');eG2.addColorStop(0.3,'#ff0');eG2.addColorStop(1,c.glow);
-    ctx.fillStyle=eG2;ctx.beginPath();ctx.ellipse(eSp,-20,eW,eH,0.3,0,Math.PI*2);ctx.fill();
-    ctx.shadowColor=c.glow;ctx.shadowBlur=8;
-    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-eSp-1,-21,1.2,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(eSp-1,-21,1.2,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-    ctx.strokeStyle='#000';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(-3-ra*2,-10);ctx.lineTo(0,-7+ra);ctx.lineTo(3+ra*2,-10);ctx.stroke();
+
+    // Mechanical legs
+    const lL=this.legL*10,lR=this.legR*10;
+    for(let s=-1;s<=1;s+=2){const lx=s*16,ly=30,lh=s>0?lR:lL;
+      ctx.fillStyle='#1a1a1a';ctx.strokeStyle=c.accent;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx-s*6+lh*.2,48+lh);ctx.lineTo(lx+s*8+lh*.2,50+lh);
+      ctx.lineTo(lx+s*4,30);ctx.closePath();ctx.fill();ctx.stroke();
+      // Foot/claw
+      ctx.fillStyle=c.accent;
+      ctx.beginPath();ctx.moveTo(lx-s*6+lh*.2,48+lh);ctx.lineTo(lx-s*14+lh*.2,54+lh);ctx.lineTo(lx+s*12+lh*.2,54+lh);
+      ctx.lineTo(lx+s*8+lh*.2,50+lh);ctx.closePath();ctx.fill();
+    }
+
+    // Head with aggressive helmet
+    const headG=ctx.createLinearGradient(0,-30,0,-5);
+    headG.addColorStop(0,'#1a1a1a');headG.addColorStop(0.4,c.accent);headG.addColorStop(1,c.body);
+    ctx.fillStyle=headG;ctx.beginPath();ctx.ellipse(0,-22,19,22,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=c.accent;ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(0,-22,19,22,0,0,Math.PI*2);ctx.stroke();
+
+    // Helmet horns/spikes — larger, more menacing
+    ctx.fillStyle=c.accent;
+    for(let i=-2;i<=2;i++){
+      const cx=i*8.5,ch=18+Math.abs(i)*7;
+      ctx.beginPath();ctx.moveTo(cx-3,-40);ctx.lineTo(cx+3,-40);ctx.lineTo(cx,-40-ch);ctx.closePath();ctx.fill();
+    }
+
+    // Glowing eyes — more dramatic
+    const eSp=8+ra*2,eW=5+ra*3,eH=4+ra*4;
+    ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(-eSp,-24,eW+2,eH+2,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(eSp,-24,eW+2,eH+2,0,0,Math.PI*2);ctx.fill();
+    const eG=ctx.createRadialGradient(-eSp,-25,0,-eSp,-24,eW);
+    eG.addColorStop(0,'#fff');eG.addColorStop(0.2,'#ff0');eG.addColorStop(0.6,c.glow);eG.addColorStop(1,'#000');
+    ctx.fillStyle=eG;ctx.beginPath();ctx.ellipse(-eSp,-24,eW,eH,-0.3,0,Math.PI*2);ctx.fill();
+    const eG2=ctx.createRadialGradient(eSp,-25,0,eSp,-24,eW);
+    eG2.addColorStop(0,'#fff');eG2.addColorStop(0.2,'#ff0');eG2.addColorStop(0.6,c.glow);eG2.addColorStop(1,'#000');
+    ctx.fillStyle=eG2;ctx.beginPath();ctx.ellipse(eSp,-24,eW,eH,0.3,0,Math.PI*2);ctx.fill();
+    // Eye highlights
+    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(-eSp-1,-25,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(eSp-1,-25,1.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+
+    // Angry mouth/teeth
+    ctx.strokeStyle='#000';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(-5-ra*2,-12);ctx.quadraticCurveTo(0,-7+ra*2,5+ra*2,-12);ctx.stroke();
     if(ra>.2){ctx.fillStyle='#fff';
-      for(let t=-1;t<=1;t+=2){ctx.beginPath();ctx.moveTo(t*2,-10);ctx.lineTo(t*2+2*ra,-12-ra*2);ctx.lineTo(t*2-2*ra,-12-ra*2);ctx.closePath();ctx.fill();}
+      for(let t=-1;t<=1;t+=2){ctx.beginPath();ctx.moveTo(t*3,-12);ctx.lineTo(t*3+3*ra,-14-ra*3);ctx.lineTo(t*3-3*ra,-14-ra*3);ctx.closePath();ctx.fill();}
     }
-    if(nearDeath){ctx.strokeStyle='#ff0000';ctx.lineWidth=1.5;ctx.globalAlpha=0.7;
-      for(let cr=0;cr<4;cr++){const cx2=Math.sin(this.animTime*7+cr)*18,cy2=Math.cos(this.animTime*5+cr)*24;
-        ctx.beginPath();ctx.moveTo(cx2-3,cy2-4);ctx.lineTo(cx2,cy2);ctx.lineTo(cx2+4,cy2+6);ctx.stroke();
-        ctx.fillStyle='#ff4400';ctx.beginPath();ctx.arc(cx2,cy2,2,0,Math.PI*2);ctx.fill();
+
+    // Near-death red lightning cracks
+    if(nearDeath){ctx.strokeStyle='#ff0000';ctx.lineWidth=2;ctx.globalAlpha=0.8;
+      for(let cr=0;cr<5;cr++){const cx2=Math.sin(this.animTime*7+cr)*22,cy2=Math.cos(this.animTime*5+cr)*28;
+        ctx.beginPath();ctx.moveTo(cx2-4,cy2-5);ctx.lineTo(cx2,cy2);ctx.lineTo(cx2+5,cy2+8);ctx.stroke();
+        ctx.fillStyle='#ff4400';ctx.beginPath();ctx.arc(cx2,cy2,3,0,Math.PI*2);ctx.fill();
       }ctx.globalAlpha=1;
     }
     // Nameplate background behind name
@@ -1402,7 +1486,7 @@ function startGame(){
 function startBossFight(){
   state=STATE.BOSS_INTRO;
   stateTimer=0;bossIntroTimer=110;
-  sfxBossIntro();
+  forceAudio();sfxBossIntro();
   addShake(8,20);
   const name=bossNames[level];
   boss=new Boss(name,level);
@@ -1650,9 +1734,14 @@ function draw(){
   if(state!==STATE.BOSS_INTRO)player.draw(ctx);
 
   // --- NEON UI ---
-  // Score with neon glow
+  // Score — direct draw with left alignment (not drawNeonText which forces center)
   ctx.textAlign='left';
-  drawNeonText(ctx,'分数: '+score,12,28,'#f1c40f',16,12);
+  ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle='#fff';ctx.shadowColor='#f1c40f';ctx.shadowBlur=18;
+  ctx.fillText('⚡ '+score,16,34);
+  ctx.fillStyle='#f1c40f';ctx.shadowBlur=0;
+  ctx.fillText('⚡ '+score,16,34);
+  ctx.shadowBlur=0;
 
   // Combo counter
   if(comboDisplay>=5){
@@ -1718,32 +1807,68 @@ function draw(){
   // BOSS INTRO OVERLAY
   if(state===STATE.BOSS_INTRO&&boss){
     const alpha=stateTimer<20?stateTimer/20:1;
-    ctx.fillStyle=`rgba(0,0,0,${alpha*.75})`;ctx.fillRect(0,0,W,H);
-    // WARNING text - HUGE so everyone sees it
-    if(stateTimer<40&&Math.floor(stateTimer/6)%2===0){
-      ctx.fillStyle='#ff0000';ctx.shadowColor='#ff0000';ctx.shadowBlur=80;
-      ctx.font='bold 80px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-      ctx.fillText('⚠ WARNING ⚠',W/2,H/2-90);
+    ctx.fillStyle=`rgba(0,0,0,${alpha*.8})`;ctx.fillRect(0,0,W,H);
+
+    // Dramatic pulsing vignette
+    const vigPulse=1+.15*Math.sin(stateTimer*.2);
+    const vigG=ctx.createRadialGradient(W/2,H/2,W*.3,W/2,H/2,W*.7*vigPulse);
+    vigG.addColorStop(0,'transparent');vigG.addColorStop(1,'rgba(0,0,0,.6)');
+    ctx.fillStyle=vigG;ctx.fillRect(0,0,W,H);
+
+    // WARNING text - pulsing red
+    if(stateTimer<40){
+      const warnAlpha=Math.abs(Math.sin(stateTimer*.3));
+      ctx.fillStyle=`rgba(255,0,0,${warnAlpha})`;ctx.shadowColor='#ff0000';ctx.shadowBlur=80+Math.sin(stateTimer*.5)*30;
+      ctx.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+      ctx.fillText('⚠ WARNING ⚠',W/2,H/2-110);
       ctx.shadowBlur=0;
     }
-    // Boss name - MASSIVE with animated scale-in
-    const bns=Math.min(1,stateTimer/15);
-    ctx.save();ctx.translate(W/2,H/2-20);ctx.scale(bns,bns);
-    ctx.fillStyle='rgba(0,0,0,0.8)';ctx.shadowColor='transparent';ctx.shadowBlur=0;
-    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText(boss.name,3,53);
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=60;
-    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';
+
+    // Boss name - 140px with INFINITE PULSE & COLOR CYCLE
+    const bns=Math.min(1,stateTimer/12);
+    const namePulse=1+.08*Math.sin(stateTimer*.15);
+    const flashCycle=stateTimer*.08;
+    const r=Math.floor(200+55*Math.sin(flashCycle));
+    const g=Math.floor(100+55*Math.sin(flashCycle+2.1));
+    const b=Math.floor(50+55*Math.sin(flashCycle+4.2));
+    const cycleColor=`rgb(${r},${g},${b})`;
+
+    ctx.save();ctx.translate(W/2,H/2-25);ctx.scale(bns*namePulse,bns*namePulse);
+
+    // Dark offset shadow
+    ctx.fillStyle='rgba(0,0,0,.9)';ctx.shadowColor='transparent';ctx.shadowBlur=0;
+    ctx.font='bold 140px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText(boss.name,4,56);
+
+    // White glow layer
+    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=80+Math.sin(stateTimer*.25)*30;
     ctx.fillText(boss.name,0,50);
-    ctx.fillStyle=boss.color.glow;ctx.shadowColor=boss.color.glow;ctx.shadowBlur=35;
-    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';
+
+    // Color cycling glow layer
+    ctx.fillStyle=cycleColor;ctx.shadowColor=cycleColor;ctx.shadowBlur=50+Math.sin(stateTimer*.3)*25;
     ctx.fillText(boss.name,0,50);
-    ctx.shadowBlur=0;ctx.fillStyle=boss.color.accent;
-    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';
+
+    // Boss's own color glow
+    ctx.fillStyle=boss.color.glow;ctx.shadowColor=boss.color.glow;ctx.shadowBlur=30;
     ctx.fillText(boss.name,0,50);
-    ctx.shadowBlur=0;ctx.restore();
-    ctx.fillStyle='#fff';ctx.font='bold 30px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('第 '+(level+1)+' 关 Boss · 准备迎战！',W/2,H/2+65);
+
+    // Sharp white outline on top
+    ctx.shadowBlur=0;ctx.shadowColor='transparent';
+    ctx.strokeStyle='#fff';ctx.lineWidth=3;
+    ctx.font='bold 140px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.strokeText(boss.name,0,50);
+
+    // Thick accent stroke
+    ctx.strokeStyle=boss.color.accent;ctx.lineWidth=5;
+    ctx.strokeText(boss.name,0,50);
+
+    ctx.restore();
+
+    // Subtitle
+    const subAlpha=.6+.4*Math.sin(stateTimer*.12);
+    ctx.fillStyle=`rgba(255,255,255,${subAlpha})`;
+    ctx.font='bold 34px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText('第 '+(level+1)+' 关 Boss · 准备迎战！',W/2,H/2+70);
   }
 
   // LEVEL COMPLETE
@@ -1813,35 +1938,34 @@ function draw(){
 
   // MENU OVERLAY
   if(state===STATE.MENU){
-    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);
-    const titleY=H*.3;
-    // Title glow - MASSIVE, dominating screen
-    ctx.shadowColor='#ff6b6b';ctx.shadowBlur=60;
-    ctx.fillStyle='#fff';ctx.font='bold 62px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('击败你的朋友们',W/2,titleY);
-    ctx.shadowBlur=0;
-    ctx.fillStyle='#ff3333';ctx.shadowColor='#ff4444';ctx.shadowBlur=35;
-    ctx.font='bold 62px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('击败你的朋友们',W/2,titleY);
-    ctx.shadowBlur=0;
-    ctx.fillStyle='#f39c12';ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('🔥 好友对决 🔥',W/2,titleY+50);
-    ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='bold 20px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('打败你的好兄弟们！',W/2,titleY+88);
-    const names=bossNames.join('  ·  ');
-    ctx.fillStyle='rgba(255,255,255,.55)';ctx.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(names,W/2,titleY+120);
+    ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(0,0,W,H);
+    const titleY=H*.27;
 
-    ctx.fillStyle='#fff';ctx.font='15px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('电脑: 方向键移动 | 手机: 滑动操控',W/2,H*.68);
-    ctx.fillText('空格键: 炸弹清屏',W/2,H*.71+20);
-    // iOS fullscreen hint
-    const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
-    if(isIOS){
-      ctx.fillStyle='rgba(255,200,100,.9)';ctx.font='bold 13px "PingFang SC","Microsoft YaHei",sans-serif';
-      ctx.fillText('💡 全屏提示：用Safari打开后',W/2,H*.78);
-      ctx.fillText('点击分享 → 添加到主屏幕 → 即可满屏畅玩',W/2,H*.78+22);
-    }
+    // Title — bold, layered, commanding
+    ctx.textAlign='center';
+    ctx.shadowColor='#ff4444';ctx.shadowBlur=80;
+    ctx.fillStyle='#fff';ctx.font='bold 68px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('Boss Rush',W/2,titleY);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#ff2222';ctx.shadowColor='#ff0000';ctx.shadowBlur=45;
+    ctx.font='bold 68px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('Boss Rush',W/2,titleY);
+    ctx.shadowBlur=0;
+
+    // Subtitle
+    ctx.fillStyle='#f39c12';ctx.shadowColor='#f39c12';ctx.shadowBlur=18;
+    ctx.font='bold 28px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('击败你的朋友们',W/2,titleY+68);
+    ctx.shadowBlur=0;
+
+    // Boss list — compact, one line
+    ctx.fillStyle='rgba(255,255,255,.45)';
+    ctx.font='bold 15px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('对手：'+bossNames.join(' · '),W/2,titleY+108);
+
+    // Controls hint — minimal
+    ctx.fillStyle='rgba(255,255,255,.6)';ctx.font='14px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('方向键移动 · 空格炸弹 · 手机滑动操控',W/2,H*.70);
   }
 
   // Bomb flash overlay
@@ -1855,17 +1979,21 @@ function draw(){
   // HTML button visibility
   const startBtn=document.getElementById('start-btn');
   const bombBtn=document.getElementById('bomb-btn');
+  const exitBtn=document.getElementById('exit-btn');
   const mobileHint=document.getElementById('mobile-hint');
   if(state===STATE.MENU){
     startBtn.style.display='block';startBtn.textContent='挑战朋友';
-    mobileHint.style.display='block';bombBtn.style.display='none';
+    mobileHint.style.display='block';bombBtn.style.display='none';exitBtn.style.display='none';
   }else if(state===STATE.GAME_OVER||state===STATE.VICTORY){
     startBtn.style.display='block';
     startBtn.textContent=state===STATE.VICTORY?'再战一轮':'再来一局';
-    mobileHint.style.display='none';bombBtn.style.display='none';
+    mobileHint.style.display='none';bombBtn.style.display='none';exitBtn.style.display='none';
+  }else if(state===STATE.DIFF_SELECT){
+    startBtn.style.display='none';mobileHint.style.display='none';
+    bombBtn.style.display='none';exitBtn.style.display='block';
   }else{
     startBtn.style.display='none';mobileHint.style.display='none';
-    bombBtn.style.display=state===STATE.DIFF_SELECT?'none':'block';
+    bombBtn.style.display='block';exitBtn.style.display='block';
   }
 }
 
