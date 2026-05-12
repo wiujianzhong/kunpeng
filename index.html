@@ -69,11 +69,34 @@ html,body{
 <div id="crt-overlay"></div>
 <script>
 // ==================== AUDIO ENGINE ====================
-const AudioCtx=window.AudioContext||window.webkitAudioContext;
-let audioCtx;
+let audioCtx=null,audioUnlocked=false;
 function initAudio(){
-  if(!audioCtx){audioCtx=new AudioCtx()}
-  if(audioCtx.state==='suspended'){audioCtx.resume()}
+  try{
+    if(!audioCtx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return;
+      audioCtx=new AC();
+    }
+    if(audioCtx.state==='suspended'){
+      audioCtx.resume().then(()=>{
+        // iOS: play silent buffer to fully unlock audio
+        if(!audioUnlocked){
+          const buf=audioCtx.createBuffer(1,2,22050);
+          const src=audioCtx.createBufferSource();src.buffer=buf;
+          src.connect(audioCtx.destination);
+          src.start(0);src.stop(audioCtx.currentTime+.001);
+          audioUnlocked=true;
+        }
+      }).catch(()=>{});
+    }else if(!audioUnlocked&&audioCtx.state==='running'){
+      audioUnlocked=true;
+    }
+  }catch(e){audioCtx=null}
+}
+// iOS 需要用户交互才能播放声音，在每个交互事件都尝试恢复
+function forceAudio(){
+  if(!audioCtx)initAudio();
+  else if(audioCtx.state!=='running')audioCtx.resume().catch(()=>{});
 }
 function playBeep(freq,type,dur,vol=.1,slide=0){
   if(!audioCtx)return;
@@ -86,16 +109,23 @@ function playBeep(freq,type,dur,vol=.1,slide=0){
   o.connect(g);g.connect(audioCtx.destination);
   o.start(t);o.stop(t+dur);
 }
-function sfxShoot(){playBeep(800,'square',.05,.03)}
-function sfxHit(){playBeep(200,'sawtooth',.15,.08,-100)}
-function sfxExplosion(){playBeep(80,'sawtooth',.3,.1,-40);playBeep(60,'square',.25,.15,-30)}
-function sfxPowerUp(){playBeep(600,'square',.08,.06);setTimeout(()=>playBeep(900,'square',.08,.06),80)}
-function sfxBossHit(){playBeep(120,'sawtooth',.2,.12);playBeep(40,'triangle',.3,.15)}
-function sfxBossIntro(){playBeep(200,'triangle',.4,.15,100);setTimeout(()=>playBeep(400,'triangle',.3,.1,200),150);setTimeout(()=>playBeep(600,'triangle',.3,.1,300),300)}
-function sfxGameOver(){playBeep(400,'triangle',.2,.3,-300);setTimeout(()=>playBeep(200,'triangle',.2,.3,-150),300);setTimeout(()=>playBeep(100,'triangle',.3,.5,-80),600)}
-function sfxVictory(){[0,150,300,450,600,750].forEach((d,i)=>setTimeout(()=>playBeep(300+i*80,'triangle',.2,.12,100),d))}
-function sfxCombo(){playBeep(500,'square',.04,.03,200)}
-function sfxBomb(){playBeep(40,'sawtooth',.5,.2,-20);playBeep(30,'square',.6,.25)}
+function sfxShoot(){playBeep(1000,'square',.04,.025);playBeep(600,'triangle',.03,.02)}
+function sfxHit(){playBeep(250,'sawtooth',.12,.06,-120);playBeep(100,'square',.08,.05)}
+function sfxExplosion(){playBeep(60,'sawtooth',.4,.12,-30);playBeep(35,'square',.5,.18,-20);playBeep(90,'triangle',.25,.1,-50)}
+function sfxPowerUp(){playBeep(700,'square',.06,.05);setTimeout(()=>playBeep(1000,'square',.06,.05),60);setTimeout(()=>playBeep(1300,'triangle',.05,.04),120)}
+function sfxBossHit(){playBeep(150,'sawtooth',.25,.12,-80);playBeep(40,'triangle',.35,.1);playBeep(60,'square',.2,.08,-30)}
+function sfxBossIntro(){
+  playBeep(180,'triangle',.5,.18,150);playBeep(100,'sawtooth',.4,.15,-50);
+  setTimeout(()=>{playBeep(350,'triangle',.35,.12,200);playBeep(200,'sawtooth',.3,.1,-80)},180);
+  setTimeout(()=>{playBeep(550,'triangle',.3,.1,300);playBeep(300,'square',.25,.08,-100)},360);
+  setTimeout(()=>{playBeep(800,'triangle',.25,.08,400);playBeep(400,'square',.2,.06,-150)},540);
+}
+function sfxBossHeartbeat(){playBeep(30,'sine',.15,.35,-10);setTimeout(()=>playBeep(25,'sine',.1,.3,-5),350)}
+function sfxGameOver(){playBeep(500,'triangle',.2,.4,-350);setTimeout(()=>playBeep(250,'triangle',.25,.35,-200),350);setTimeout(()=>playBeep(120,'sawtooth',.4,.6,-80),700)}
+function sfxVictory(){[0,120,240,360,480,600,720,840].forEach((d,i)=>setTimeout(()=>playBeep(300+i*100,'triangle',.15,.1,150),d))}
+let _comboIdx=0;
+function sfxCombo(){_comboIdx++;playBeep(500+_comboIdx*30,'square',.04,.025,200)}
+function sfxBomb(){playBeep(35,'sawtooth',.6,.25,-15);playBeep(25,'square',.7,.3);playBeep(50,'sawtooth',.4,.2,-25)}
 
 // ==================== BROWSER COMPATIBILITY ====================
 // Polyfill for ctx.ellipse() - missing in older WebViews (UC, old WeChat, etc.)
@@ -250,7 +280,7 @@ function handleDiffTap(x,y){
 }
 
 // ==================== PARTICLE SYSTEM ====================
-const MAX_PARTICLES=300;
+const MAX_PARTICLES=200;
 const particles=[];
 let particleIndex=0;
 
@@ -1092,13 +1122,78 @@ class Boss{
     innerAura.addColorStop(0,auraColor+'60');innerAura.addColorStop(1,'transparent');
     ctx.fillStyle=innerAura;ctx.beginPath();ctx.arc(0,0,35,0,Math.PI*2);ctx.fill();
 
-    // === BOSS IMAGE (cool sprite, centered) ===
-    const bImgIdx=this.level%bossImgs.length;
-    if(bossImgsLoaded&&bossImgs[bImgIdx]&&bossImgs[bImgIdx].complete){
-      ctx.globalAlpha=this.flashTimer>0&&this.flashTimer%2===0?.5:1;
-      const iw=130,ih=160;
-      ctx.drawImage(bossImgs[bImgIdx],-iw/2,-ih/2+10,iw,ih);
-      ctx.globalAlpha=1;
+    // ===== PROCEDURAL 2D BOSS BODY =====
+    const c=this.color;const ra=1-hpPct;const angy=ra>.3?Math.sin(this.animTime*6)*ra*4:0;
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.ellipse(0,42,36,10,0,0,Math.PI*2);ctx.fill();
+    const jfH=Math.sin(this.animTime*5)*5+14;const jfG=ctx.createLinearGradient(0,32,0,32+jfH);
+    jfG.addColorStop(0,c.glow);jfG.addColorStop(0.3,ra>.5?'#ff4400':'#ffaa00');jfG.addColorStop(0.7,'#ff2200');jfG.addColorStop(1,'transparent');
+    ctx.fillStyle=jfG;ctx.beginPath();ctx.moveTo(-8,32);ctx.lineTo(8,32);ctx.lineTo(12,32+jfH);ctx.lineTo(-12,32+jfH);ctx.closePath();ctx.fill();
+    const bodyG=ctx.createLinearGradient(0,-22,0,26);
+    bodyG.addColorStop(0,c.accent);bodyG.addColorStop(0.4,c.body);bodyG.addColorStop(0.55,'#0a0a0a');bodyG.addColorStop(1,c.body);
+    ctx.fillStyle=bodyG;ctx.beginPath();ctx.moveTo(-28,8);ctx.lineTo(-24,-14);ctx.lineTo(-10,-21);
+    ctx.lineTo(10,-21);ctx.lineTo(24,-14);ctx.lineTo(28,8);ctx.lineTo(22,26);ctx.lineTo(-22,26);ctx.closePath();ctx.fill();
+    ctx.strokeStyle=c.accent;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-30,8);ctx.lineTo(-46,0);ctx.lineTo(-44,16);ctx.lineTo(-28,18);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(30,8);ctx.lineTo(46,0);ctx.lineTo(44,16);ctx.lineTo(28,18);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=c.glow;
+    ctx.beginPath();ctx.moveTo(-44,2);ctx.lineTo(-52+angy,-4);ctx.lineTo(-40,8);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(44,2);ctx.lineTo(52-angy,-4);ctx.lineTo(40,8);ctx.closePath();ctx.fill();
+    ctx.strokeStyle=c.glow;ctx.lineWidth=2.5;ctx.globalAlpha=0.7;
+    ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(-7,4);ctx.moveTo(0,-14);ctx.lineTo(7,4);ctx.stroke();ctx.globalAlpha=1;
+    ctx.strokeStyle=c.glow;ctx.lineWidth=1;ctx.globalAlpha=0.35;
+    ctx.beginPath();ctx.moveTo(-14,-16);ctx.lineTo(-14,14);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(14,-16);ctx.lineTo(14,14);ctx.stroke();ctx.globalAlpha=1;
+    const aL=this.armL*14,aR=this.armR*14;
+    for(let s=-1;s<=1;s+=2){const ax=s*28,ay=10,ah=s>0?aR:aL;
+      ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-s*20+ah,20+ah*.4);ctx.lineTo(ax-s*14+ah,28+ah*.3);
+      ctx.lineTo(ax-s*4,24);ctx.closePath();ctx.fill();ctx.stroke();
+      const fx=ax-s*18+ah,fy=24+ah*.35;ctx.fillStyle=c.glow;
+      ctx.beginPath();ctx.arc(fx,fy,5+Math.abs(ah)*.3,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(fx,fy,5+Math.abs(ah)*.3,0,Math.PI*2);ctx.stroke();
+      const fistG=ctx.createRadialGradient(fx,fy,1,fx,fy,7);
+      fistG.addColorStop(0,'#fff');fistG.addColorStop(0.5,c.glow);fistG.addColorStop(1,'transparent');
+      ctx.fillStyle=fistG;ctx.beginPath();ctx.arc(fx,fy,7,0,Math.PI*2);ctx.fill();
+    }
+    const lL=this.legL*10,lR=this.legR*10;
+    for(let s=-1;s<=1;s+=2){const lx=s*18,ly=26,lh=s>0?lR:lL;
+      ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx-s*4+lh*.2,44+lh);ctx.lineTo(lx+s*6+lh*.2,46+lh);
+      ctx.lineTo(lx+s*4,26);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle=c.accent;
+      ctx.beginPath();ctx.moveTo(lx-s*4+lh*.2,44+lh);ctx.lineTo(lx-s*10+lh*.2,50+lh);ctx.lineTo(lx+s*10+lh*.2,50+lh);
+      ctx.lineTo(lx+s*6+lh*.2,46+lh);ctx.closePath();ctx.fill();
+    }
+    const headG=ctx.createLinearGradient(0,-23,0,-5);
+    headG.addColorStop(0,c.accent);headG.addColorStop(1,c.body);
+    ctx.fillStyle=headG;ctx.beginPath();ctx.ellipse(0,-18,17,20,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=c.accent;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,-18,17,20,0,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle=c.glow;for(let i=-2;i<=2;i++){const cx=i*7,ch=16+Math.abs(i)*5;
+      ctx.beginPath();ctx.moveTo(cx-2,-34);ctx.lineTo(cx+2,-34);ctx.lineTo(cx,-34-ch);ctx.closePath();ctx.fill();
+    }
+    const eSp=7+ra*2,eW=4+ra*2,eH=3+ra*3;
+    ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(-eSp,-20,eW+1,eH+1,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(eSp,-20,eW+1,eH+1,0,0,Math.PI*2);ctx.fill();
+    const eG=ctx.createRadialGradient(-eSp,-21,0,-eSp,-20,eW);
+    eG.addColorStop(0,'#fff');eG.addColorStop(0.3,'#ff0');eG.addColorStop(1,c.glow);
+    ctx.fillStyle=eG;ctx.beginPath();ctx.ellipse(-eSp,-20,eW,eH,-0.3,0,Math.PI*2);ctx.fill();
+    const eG2=ctx.createRadialGradient(eSp,-21,0,eSp,-20,eW);
+    eG2.addColorStop(0,'#fff');eG2.addColorStop(0.3,'#ff0');eG2.addColorStop(1,c.glow);
+    ctx.fillStyle=eG2;ctx.beginPath();ctx.ellipse(eSp,-20,eW,eH,0.3,0,Math.PI*2);ctx.fill();
+    ctx.shadowColor=c.glow;ctx.shadowBlur=8;
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-eSp-1,-21,1.2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(eSp-1,-21,1.2,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    ctx.strokeStyle='#000';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-3-ra*2,-10);ctx.lineTo(0,-7+ra);ctx.lineTo(3+ra*2,-10);ctx.stroke();
+    if(ra>.2){ctx.fillStyle='#fff';
+      for(let t=-1;t<=1;t+=2){ctx.beginPath();ctx.moveTo(t*2,-10);ctx.lineTo(t*2+2*ra,-12-ra*2);ctx.lineTo(t*2-2*ra,-12-ra*2);ctx.closePath();ctx.fill();}
+    }
+    if(nearDeath){ctx.strokeStyle='#ff0000';ctx.lineWidth=1.5;ctx.globalAlpha=0.7;
+      for(let cr=0;cr<4;cr++){const cx2=Math.sin(this.animTime*7+cr)*18,cy2=Math.cos(this.animTime*5+cr)*24;
+        ctx.beginPath();ctx.moveTo(cx2-3,cy2-4);ctx.lineTo(cx2,cy2);ctx.lineTo(cx2+4,cy2+6);ctx.stroke();
+        ctx.fillStyle='#ff4400';ctx.beginPath();ctx.arc(cx2,cy2,2,0,Math.PI*2);ctx.fill();
+      }ctx.globalAlpha=1;
     }
     // Nameplate background behind name
     ctx.fillStyle='rgba(0,0,0,0.7)';
@@ -1272,7 +1367,6 @@ function useBomb(){
 
 // ==================== WAVE SYSTEM ====================
 function spawnWave(){
-  wavesCleared++;
   const mult=difficulty==='rookie'?0.6:difficulty==='veteran'?1:1.5;
   const count=Math.floor((3+wavesCleared+level*1.5)*mult);
   for(let i=0;i<count;i++){
@@ -1479,6 +1573,7 @@ function update(){
   // WAVE MANAGEMENT
   if(!boss&&state===STATE.PLAYING){
     if(enemies.length===0){
+      wavesCleared++;
       if(wavesCleared>=wavesPerLevel)startBossFight();
       else spawnWave();
     }
@@ -1581,7 +1676,7 @@ function draw(){
   if(rageMode){
     const rageAlpha=.5+.5*Math.sin(frameCount*.2);
     ctx.fillStyle=`rgba(255,0,0,${rageAlpha*.3})`;ctx.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('🔥 RAGE MODE 🔥',W/2,88);
+    ctx.fillText('🔥 疯狂模式 🔥',W/2,88);
   }
 
   // Right side UI
@@ -1605,7 +1700,7 @@ function draw(){
   // Difficulty indicator
   ctx.fillStyle=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowColor=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowBlur=5;
   ctx.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(difficulty==='rookie'?'新手上路':difficulty==='veteran'?'老兵':'封狗',W-12,88);ctx.shadowBlur=0;
+  ctx.fillText(difficulty==='rookie'?'新手上路':difficulty==='veteran'?'老兵':'疯狂',W-12,88);ctx.shadowBlur=0;
 
   // Level/wave info
   if(!boss&&state===STATE.PLAYING){
@@ -1632,18 +1727,23 @@ function draw(){
       ctx.shadowBlur=0;
     }
     // Boss name - MASSIVE with animated scale-in
-    const bns=Math.min(1,stateTimer/20);
-    ctx.save();ctx.translate(W/2,H/2-10);ctx.scale(bns,bns);
-    ctx.fillStyle='#fff';ctx.shadowColor=boss.color.glow;ctx.shadowBlur=40;
-    ctx.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText(boss.name,0,0);
-    ctx.shadowBlur=0;
-    ctx.fillStyle=boss.color.accent;ctx.shadowColor=boss.color.accent;ctx.shadowBlur=22;
-    ctx.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(boss.name,0,0);
+    const bns=Math.min(1,stateTimer/15);
+    ctx.save();ctx.translate(W/2,H/2-20);ctx.scale(bns,bns);
+    ctx.fillStyle='rgba(0,0,0,0.8)';ctx.shadowColor='transparent';ctx.shadowBlur=0;
+    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText(boss.name,3,53);
+    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=60;
+    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(boss.name,0,50);
+    ctx.fillStyle=boss.color.glow;ctx.shadowColor=boss.color.glow;ctx.shadowBlur=35;
+    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(boss.name,0,50);
+    ctx.shadowBlur=0;ctx.fillStyle=boss.color.accent;
+    ctx.font='bold 110px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(boss.name,0,50);
     ctx.shadowBlur=0;ctx.restore();
-    ctx.fillStyle='#fff';ctx.font='bold 28px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('第 '+(level+1)+' 关 Boss · 准备迎战！',W/2,H/2+60);
+    ctx.fillStyle='#fff';ctx.font='bold 30px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText('第 '+(level+1)+' 关 Boss · 准备迎战！',W/2,H/2+65);
   }
 
   // LEVEL COMPLETE
@@ -1690,7 +1790,7 @@ function draw(){
     ctx.fillStyle='rgba(255,255,255,.5)';
     ctx.fillText('新手上路：尽情爽玩，火力全开！',W/2,H/2-52);
     ctx.fillText('老兵：朋友认真了，注意闪避！',W/2,H/2-25);
-    ctx.fillText('封狗：地狱难度，极限生存！',W/2,H/2+2);
+    ctx.fillText('疯狂：地狱难度，极限生存！',W/2,H/2+2);
     // Rookie button
     const rGlow=difficulty==='rookie'?30:0;
     ctx.fillStyle='#27ae60';ctx.shadowColor='#27ae60';ctx.shadowBlur=rGlow;
@@ -1769,7 +1869,11 @@ function draw(){
   }
 }
 
-function gameLoop(){
+let lastTime=0,dt=1;
+function gameLoop(timestamp){
+  if(!lastTime)lastTime=timestamp;
+  dt=Math.min((timestamp-lastTime)/16.667,3); // cap at 3x to prevent spiral
+  lastTime=timestamp;
   update();
   draw();
   requestAnimationFrame(gameLoop);
