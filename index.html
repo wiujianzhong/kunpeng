@@ -152,21 +152,23 @@ resize();
 // ==================== GAME STATE ====================
 const STATE={LOADING:0,MENU:1,DIFF_SELECT:7,PLAYING:2,BOSS_INTRO:3,LEVEL_COMPLETE:4,GAME_OVER:5,VICTORY:6};
 let state=STATE.MENU;
-let difficulty='easy';
+let difficulty='rookie';// rookie|veteran|elite
 let score=0,lives=5,level=0,bombs=3;
 let stateTimer=0,bossIntroTimer=0,levelCompleteTimer=0;
 let shakeAmount=0,shakeDuration=0;
 let frameCount=0;
 let bombFlash=0;
 
-const bossNames=['李亚增','李彦祥','李飞','杨小军','王小涛','伍建忠'];
+const bossNames=['李亚增','李彦祥','李飞','杨小军','王小涛','伍建忠','陈大鹏','赵铁柱'];
 const bossColors={
   '李亚增':{body:'#c0392b',accent:'#e74c3c',glow:'#f39c12',face:'#2c3e50'},
   '李彦祥':{body:'#2471a3',accent:'#5dade2',glow:'#85c1e9',face:'#1a5276'},
   '李飞':{body:'#6c3483',accent:'#bb8fce',glow:'#d7bde2',face:'#4a235a'},
   '杨小军':{body:'#1e8449',accent:'#2ecc71',glow:'#58d68d',face:'#145a32'},
   '王小涛':{body:'#b7950b',accent:'#f1c40f',glow:'#f9e79f',face:'#7d6608'},
-  '伍建忠':{body:'#6e2c00',accent:'#e67e22',glow:'#f0b27a',face:'#3e1700'}
+  '伍建忠':{body:'#6e2c00',accent:'#e67e22',glow:'#f0b27a',face:'#3e1700'},
+  '陈大鹏':{body:'#1b4f72',accent:'#3498db',glow:'#85c1e9',face:'#0d3b56'},
+  '赵铁柱':{body:'#641e16',accent:'#cb4335',glow:'#f1948a',face:'#3e100c'}
 };
 
 // ==================== INPUT ====================
@@ -240,9 +242,10 @@ document.getElementById('bomb-btn').addEventListener('touchstart',e=>{
 document.addEventListener('contextmenu',e=>{e.preventDefault()});
 
 function handleDiffTap(x,y){
-  if(x>W/2-100&&x<W/2+100){
-    if(y>H/2+30&&y<H/2+80){difficulty='easy';resetGame()}
-    else if(y>H/2+95&&y<H/2+145){difficulty='hard';resetGame()}
+  if(x>W/2-110&&x<W/2+110){
+    if(y>H/2+10&&y<H/2+55){difficulty='rookie';resetGame()}
+    else if(y>H/2+65&&y<H/2+110){difficulty='veteran';resetGame()}
+    else if(y>H/2+120&&y<H/2+165){difficulty='elite';resetGame()}
   }
 }
 
@@ -332,6 +335,34 @@ function spawnEngineParticle(x,y){
 
 // ==================== BACKGROUND SYSTEM ====================
 const bgStars=[],bgNebula=[],bgFlow=[];
+// Space background images from Pexels
+const bgImages=[];
+const bgImagePaths=['assets/bg-space-purple.jpg','assets/bg-nebula-blue.jpg','assets/bg-galaxy-swirl.jpg'];
+let bgImagesLoaded=false;
+function preloadBackgroundImages(){
+  let loaded=0;
+  bgImagePaths.forEach((path,i)=>{
+    const img=new Image();
+    img.onload=()=>{loaded++;if(loaded>=bgImagePaths.length)bgImagesLoaded=true};
+    img.onerror=()=>{loaded++;if(loaded>=bgImagePaths.length)bgImagesLoaded=true};
+    img.src=path;
+    bgImages.push(img);
+  });
+}
+// Boss images - cool boss sprites
+const bossImgs=[];
+const bossImgPaths=['assets/boss1.jpg','assets/boss2.jpg','assets/boss3.jpg','assets/boss4.jpg','assets/boss5.jpg','assets/boss6.jpg','assets/boss1.jpg','assets/boss2.jpg'];
+let bossImgsLoaded=false;
+function preloadBossImages(){
+  let loaded=0;
+  bossImgPaths.forEach((path,i)=>{
+    const img=new Image();
+    img.onload=()=>{loaded++;if(loaded>=bossImgPaths.length)bossImgsLoaded=true};
+    img.onerror=()=>{loaded++;if(loaded>=bossImgPaths.length)bossImgsLoaded=true};
+    img.src=path;
+    bossImgs.push(img);
+  });
+}
 
 function initBackground(){
   bgStars.length=0;bgNebula.length=0;bgFlow.length=0;
@@ -350,11 +381,21 @@ function initBackground(){
 }
 
 function drawBackground(ctx){
-  // Deep space gradient
-  const bgG=ctx.createLinearGradient(0,0,0,H);
-  const hueShift=state===STATE.BOSS_INTRO?.3:(boss&&boss.hp<boss.maxHp*.3?.15:0);
-  bgG.addColorStop(0,'#050510');bgG.addColorStop(.5,'#0a0a20');bgG.addColorStop(1,'#0d0d2a');
-  ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
+  // Base: draw space image if loaded, otherwise gradient
+  const bgIdx=level%bgImages.length;
+  if(bgImagesLoaded&&bgImages[bgIdx]&&bgImages[bgIdx].complete){
+	ctx.globalAlpha=boss&&boss.hp<boss.maxHp*.3?0.4:0.55;
+	ctx.drawImage(bgImages[bgIdx],0,0,W,H);
+	ctx.globalAlpha=1;
+  }else{
+	const bgG=ctx.createLinearGradient(0,0,0,H);
+	bgG.addColorStop(0,'#050510');bgG.addColorStop(.5,'#0a0a20');bgG.addColorStop(1,'#0d0d2a');
+	ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
+  }
+  // Dark overlay for gameplay readability
+  if(state===STATE.PLAYING||state===STATE.BOSS_INTRO){
+	ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,0,W,H);
+  }
 
   const spd=(state===STATE.PLAYING||state===STATE.BOSS_INTRO)?1:.5;
   const bossNearDeath=boss&&boss.hp<boss.maxHp*.3;
@@ -406,8 +447,8 @@ let lastShockwave=0;
 
 function addCombo(){
   comboCount++;comboTimer=90;
-  if(comboCount>=30&&!rageMode){rageMode=true;rageTimer=300}
-  if(comboCount>=50&&frameCount-lastShockwave>3600){
+  if(comboCount>=(difficulty==='rookie'?12:difficulty==='veteran'?25:35)&&!rageMode){rageMode=true;rageTimer=difficulty==='rookie'?500:difficulty==='veteran'?350:250}
+  if(comboCount>=(difficulty==='rookie'?25:50)&&frameCount-lastShockwave>3600){
     lastShockwave=frameCount;
     // Auto shockwave
     enemies.forEach(e=>{e.hp=0;score+=e.score;spawnExplosion(e.x,e.y,12)});
@@ -451,7 +492,7 @@ function addScorePopup(x,y,pts){
 
 // ==================== GAME OBJECTS ====================
 let player,enemies,bullets,powerUps,boss,stars;
-let waveEnemies=[],wavesCleared=0,wavesPerLevel=5;
+let waveEnemies=[],wavesCleared=0,wavesPerLevel=6;
 
 class Player{
   constructor(){
@@ -489,7 +530,7 @@ class Player{
 
     if(this.invincible>0)this.invincible--;
     if(this.shootCD>0)this.shootCD--;
-    const baseShootCD=difficulty==='easy'?10:14;
+    const baseShootCD=difficulty==='rookie'?6:difficulty==='veteran'?11:15;
     if(this.shootCD<=0){
       this.shoot();
       this.shootCD=this.power>=3?Math.floor(baseShootCD*.5):this.power>=2?Math.floor(baseShootCD*.75):baseShootCD;
@@ -684,9 +725,9 @@ class Enemy{
   constructor(x,y,type){
     this.x=x;this.y=y;
     this.type=type||'small';
-    if(type==='small'){this.w=26;this.h=28;this.hp=1;this.speed=difficulty==='easy'?2:3;this.score=100}
-    else if(type==='medium'){this.w=36;this.h=36;this.hp=difficulty==='easy'?1:2;this.speed=difficulty==='easy'?1.5:2;this.score=200}
-    else{this.w=48;this.h=48;this.hp=difficulty==='easy'?2:4;this.speed=difficulty==='easy'?1:1.5;this.score=400}
+    if(type==='small'){this.w=26;this.h=28;this.hp=difficulty==='rookie'?1:difficulty==='veteran'?1:2;this.speed=difficulty==='rookie'?1.5:difficulty==='veteran'?2.5:3.5;this.score=100}
+    else if(type==='medium'){this.w=36;this.h=36;this.hp=difficulty==='rookie'?1:difficulty==='veteran'?2:3;this.speed=difficulty==='rookie'?1:difficulty==='veteran'?1.8:2.5;this.score=200}
+    else{this.w=48;this.h=48;this.hp=difficulty==='rookie'?2:difficulty==='veteran'?3:5;this.speed=difficulty==='rookie'?0.6:difficulty==='veteran'?1.2:2;this.score=400}
     this.shootTimer=60+Math.random()*120;
     this.wobble=Math.random()*Math.PI*2;
     this.flashTimer=0;
@@ -700,10 +741,10 @@ class Enemy{
     this.shootTimer--;
     if(this.flashTimer>0)this.flashTimer--;
     if(this.shootTimer<=0){
-      const sm=difficulty==='easy'?2.2:1;
+      const sm=difficulty==='rookie'?3:difficulty==='veteran'?1:0.7;
       this.shootTimer=(this.type==='small'?120+Math.random()*80:this.type==='medium'?80+Math.random()*70:55+Math.random()*55)*sm;
       const angle=Math.atan2(player.y-this.y,player.x-this.x);
-      const bs=(difficulty==='easy'?1.5:2.5);
+      const bs=(difficulty==='rookie'?1:difficulty==='veteran'?2.2:3);
       bullets.push(new Bullet(this.x,this.y,Math.cos(angle)*bs,Math.sin(angle)*bs,false));
     }
   }
@@ -716,7 +757,7 @@ class Enemy{
       addCombo();
       spawnExplosion(this.x,this.y,this.type==='large'?20:12);
       // Higher power-up drop rate, especially early
-      const dropRate=level===0?.18:.12;
+      const dropRate=difficulty==='rookie'?(level===0?.35:.25):difficulty==='veteran'?(level===0?.16:.12):(level===0?.12:.06);
       if(Math.random()<dropRate||(this.type==='large'&&Math.random()<.5))spawnPowerUp(this.x,this.y);
       return true;
     }
@@ -861,7 +902,7 @@ class Boss{
     this.w=90;this.h=150;
     this.x=W/2;this.y=-180;
     this.targetY=120;
-    this.maxHp=Math.floor((20+level*10)*(difficulty==='easy'?0.5:1));
+    this.maxHp=Math.floor((20+level*10)*(difficulty==='rookie'?0.35:difficulty==='veteran'?0.8:1.3));
     this.hp=this.maxHp;
     this.phase=0;this.shootTimer=0;
     this.animTime=Math.random()*Math.PI*2;
@@ -971,12 +1012,12 @@ class Boss{
     }
   }
   bossAttack(){
-    const dm=difficulty==='easy'?1.6:1;
+    const dm=difficulty==='rookie'?2.5:difficulty==='veteran'?1:0.7;
     const baseCD=(this.level>=4?18:this.level>=2?25:30);
     const nearDeathMult=this.hp<this.maxHp*.2?.6:1;
     this.shootTimer=Math.max(8,(baseCD-this.level*3-this.phase*5)*dm*nearDeathMult);
     const bx=this.x,by=this.y+20;
-    const bs=(difficulty==='easy'?0.75:1);
+    const bs=(difficulty==='rookie'?0.5:difficulty==='veteran'?0.9:1.3);
     if(this.name==='李亚增'){
       const a=Math.atan2(player.y-by,player.x-bx);
       for(let i=-1;i<=1;i++)bullets.push(new Bullet(bx,by,Math.cos(a+i*.3)*4*bs,Math.sin(a+i*.3)*4*bs,false,'#f39c12'));
@@ -1051,282 +1092,19 @@ class Boss{
     innerAura.addColorStop(0,auraColor+'60');innerAura.addColorStop(1,'transparent');
     ctx.fillStyle=innerAura;ctx.beginPath();ctx.arc(0,0,35,0,Math.PI*2);ctx.fill();
 
-    // === EXHAUST TRAIL (below feet - dual-layer flame) ===
-    const exFlame=Math.sin(this.animTime*6)*6+16;
-    for(let i=0;i<2;i++){
-      const ex=(i===0?-16:16),ey=62;
-      // Outer flame
-      const eg=ctx.createLinearGradient(ex,ey,ex,ey+exFlame+12);
-      eg.addColorStop(0,'#fff');eg.addColorStop(.1,this.color.glow);eg.addColorStop(.35,this.color.accent);eg.addColorStop(.6,this.color.body);eg.addColorStop(.85,'rgba(20,0,0,0.4)');eg.addColorStop(1,'transparent');
-      ctx.fillStyle=eg;
-      ctx.beginPath();ctx.moveTo(ex-7,ey);ctx.quadraticCurveTo(ex-2,ey+exFlame*.4,ex,ey+exFlame);ctx.quadraticCurveTo(ex+2,ey+exFlame*.4,ex+7,ey);ctx.fill();
-      // Inner white core
-      const egi=ctx.createLinearGradient(ex,ey+2,ex,ey+exFlame*.5);
-      egi.addColorStop(0,'#fff');egi.addColorStop(.4,this.color.glow+'cc');egi.addColorStop(1,'transparent');
-      ctx.fillStyle=egi;
-      ctx.beginPath();ctx.moveTo(ex-3,ey+2);ctx.quadraticCurveTo(ex,ey+exFlame*.3,ex,ey+exFlame*.55);ctx.quadraticCurveTo(ex,ey+exFlame*.3,ex+3,ey+2);ctx.fill();
+    // === BOSS IMAGE (cool sprite, centered) ===
+    const bImgIdx=this.level%bossImgs.length;
+    if(bossImgsLoaded&&bossImgs[bImgIdx]&&bossImgs[bImgIdx].complete){
+      ctx.globalAlpha=this.flashTimer>0&&this.flashTimer%2===0?.5:1;
+      const iw=130,ih=160;
+      ctx.drawImage(bossImgs[bImgIdx],-iw/2,-ih/2+10,iw,ih);
+      ctx.globalAlpha=1;
     }
-
-    // === SHOULDER PADS (heavy layered pauldrons) ===
-    const shoulderY=-34;
-    [-1,1].forEach(side=>{
-      ctx.save();ctx.translate(side*30,shoulderY);
-      // Outer armor plate (larger)
-      const spG=ctx.createLinearGradient(0,-16,0,14);
-      spG.addColorStop(0,this.color.accent);spG.addColorStop(.4,this.color.body);spG.addColorStop(1,'#1a1a2e');
-      ctx.fillStyle=spG;
-      roundRect(ctx,-18,-14,36,28,9);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=2.5;ctx.stroke();
-      // Inner trim
-      ctx.strokeStyle=this.color.glow;ctx.lineWidth=1;ctx.globalAlpha=.5;
-      roundRect(ctx,-14,-10,28,20,6);ctx.stroke();ctx.globalAlpha=1;
-      // Central power node
-      const nodeG=ctx.createRadialGradient(0,0,2,0,0,8);
-      nodeG.addColorStop(0,'#fff');nodeG.addColorStop(.5,this.color.glow);nodeG.addColorStop(1,'transparent');
-      ctx.fillStyle=nodeG;
-      ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fill();
-      // Top spike
-      ctx.fillStyle=this.color.accent;
-      ctx.beginPath();ctx.moveTo(-5,-14);ctx.lineTo(0,-22);ctx.lineTo(5,-14);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(-10,-10);ctx.lineTo(side*16,-18);ctx.lineTo(-4,-8);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(10,-10);ctx.lineTo(side*16,-18);ctx.lineTo(4,-8);ctx.closePath();ctx.fill();
-      ctx.restore();
-    });
-
-    // === LEGS (armored mech walker legs) ===
-    const legLen=28;
-    [-1,1].forEach(side=>{
-      const legAngle=side===1?this.legR:this.legL;
-      ctx.save();ctx.translate(side*14,35);ctx.rotate(legAngle);
-      // Thigh armor
-      const thG=ctx.createLinearGradient(0,0,0,legLen*.5);
-      thG.addColorStop(0,this.color.accent);thG.addColorStop(.5,this.color.body);thG.addColorStop(1,'#1a1a28');
-      ctx.fillStyle=thG;
-      roundRect(ctx,-8,0,16,legLen*.5,6);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=2;ctx.stroke();
-      // Knee joint with glow
-      const kjG=ctx.createRadialGradient(0,legLen*.5,2,0,legLen*.5,7);
-      kjG.addColorStop(0,'#fff');kjG.addColorStop(.4,this.color.glow);kjG.addColorStop(1,'transparent');
-      ctx.fillStyle=kjG;ctx.beginPath();ctx.arc(0,legLen*.5,7,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=this.color.accent;ctx.beginPath();ctx.arc(0,legLen*.5,4,0,Math.PI*2);ctx.fill();
-      // Lower leg (calf)
-      const clG=ctx.createLinearGradient(0,legLen*.5,0,legLen);
-      clG.addColorStop(0,this.color.body);clG.addColorStop(1,this.color.accent);
-      ctx.fillStyle=clG;
-      roundRect(ctx,-7,legLen*.5,14,legLen*.5,5);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=1.5;ctx.stroke();
-      // Heavy boot
-      ctx.fillStyle='#2a2a3a';
-      roundRect(ctx,-9,legLen-3,18,10,5);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=2;ctx.stroke();
-      // Boot sole highlight
-      ctx.fillStyle=this.color.glow;ctx.globalAlpha=.4;
-      ctx.fillRect(-7,legLen+5,14,2);ctx.globalAlpha=1;
-      // Ankle glow ring
-      ctx.strokeStyle=this.color.glow;ctx.lineWidth=1.5;ctx.globalAlpha=.6;
-      ctx.beginPath();ctx.arc(0,legLen-2,5,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
-      ctx.restore();
-    });
-
-    // === BODY (heavy mech torso) ===
-    const bodyY=-5,bodyW=44,bodyH=46;
-    // Outer armor frame (slightly larger, darker)
-    ctx.fillStyle='#1a1a2e';roundRect(ctx,-bodyW/2-3,bodyY-bodyH/2-3,bodyW+6,bodyH+6,10);ctx.fill();
-    ctx.strokeStyle=this.color.accent;ctx.lineWidth=3;ctx.stroke();
-    // Main torso with 4-stop metallic gradient
-    const bodyG=ctx.createLinearGradient(0,bodyY-bodyH/2,0,bodyY+bodyH/2);
-    bodyG.addColorStop(0,this.color.accent);bodyG.addColorStop(.2,this.color.body);bodyG.addColorStop(.5,'#1a1a2e');bodyG.addColorStop(.8,this.color.body);bodyG.addColorStop(1,this.color.glow);
-    ctx.fillStyle=bodyG;
-    roundRect(ctx,-bodyW/2,bodyY-bodyH/2,bodyW,bodyH,8);ctx.fill();
-    ctx.strokeStyle=this.color.accent;ctx.lineWidth=2.5;ctx.stroke();
-    // Armor panel lines - horizontal segmentation
-    ctx.strokeStyle=this.color.glow;ctx.lineWidth=1;ctx.globalAlpha=.5;
-    for(let l=0;l<3;l++){
-      ctx.beginPath();ctx.moveTo(-bodyW/2+6,bodyY-bodyH/2+8+l*14);ctx.lineTo(bodyW/2-6,bodyY-bodyH/2+8+l*14);ctx.stroke();
-    }
-    // Vertical center seam
-    ctx.beginPath();ctx.moveTo(0,bodyY-bodyH/2+4);ctx.lineTo(0,bodyY+bodyH/2-4);ctx.stroke();
-    ctx.globalAlpha=1;
-    // Side panel rivets
-    ctx.fillStyle=this.color.glow;ctx.globalAlpha=.6;
-    for(let r=0;r<4;r++){
-      ctx.beginPath();ctx.arc(-bodyW/2+6,bodyY-bodyH/2+14+r*10,1.5,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(bodyW/2-6,bodyY-bodyH/2+14+r*10,1.5,0,Math.PI*2);ctx.fill();
-    }
-    ctx.globalAlpha=1;
-    // Chest core - multi-layer pulsing reactor
-    const corePulse=Math.sin(this.animTime*3)*.3+.7;
-    const coreY=bodyY-4;
-    // Outer pulse ring
-    const coreRingG=ctx.createRadialGradient(0,coreY,8*corePulse,0,coreY,18*corePulse);
-    coreRingG.addColorStop(0,'transparent');coreRingG.addColorStop(.5,this.color.glow+'44');coreRingG.addColorStop(1,'transparent');
-    ctx.fillStyle=coreRingG;ctx.beginPath();ctx.arc(0,coreY,18*corePulse,0,Math.PI*2);ctx.fill();
-    // Mid glow
-    const coreMid=ctx.createRadialGradient(0,coreY,3,0,coreY,13*corePulse);
-    coreMid.addColorStop(0,'#fff');coreMid.addColorStop(.3,this.color.glow);coreMid.addColorStop(1,'transparent');
-    ctx.fillStyle=coreMid;ctx.beginPath();ctx.arc(0,coreY,13*corePulse,0,Math.PI*2);ctx.fill();
-    // Inner white hot
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=6*corePulse;
-    ctx.beginPath();ctx.arc(0,coreY,4*corePulse,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-    // Rotating energy ring around core
-    ctx.strokeStyle=this.color.glow;ctx.lineWidth=1;ctx.globalAlpha=.5+.2*Math.sin(this.animTime*2);
-    ctx.beginPath();ctx.arc(0,coreY,12,this.animTime,this.animTime+Math.PI*1.2);ctx.stroke();
-    ctx.beginPath();ctx.arc(0,coreY,12,this.animTime+Math.PI,this.animTime+Math.PI*2.2);ctx.stroke();
-    ctx.globalAlpha=1;
-
-    // === HEAD & HELMET ===
-    const headY=bodyY-bodyH/2-30,headR=26;
-    // Helmet outer aura
-    const hgAura=ctx.createRadialGradient(0,headY,headR*.3,0,headY,headR*1.6);
-    hgAura.addColorStop(0,this.color.accent+'50');hgAura.addColorStop(.6,this.color.glow+'18');hgAura.addColorStop(1,'transparent');
-    ctx.fillStyle=hgAura;ctx.beginPath();ctx.arc(0,headY,headR*1.6,0,Math.PI*2);ctx.fill();
-    // Helmet base - dark metallic
-    const helmG=ctx.createLinearGradient(0,headY-headR,0,headY+headR);
-    helmG.addColorStop(0,'#2a2a3a');helmG.addColorStop(.4,this.color.body);helmG.addColorStop(1,'#1a1a28');
-    ctx.fillStyle=helmG;ctx.beginPath();ctx.arc(0,headY,headR+6,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=this.color.accent;ctx.lineWidth=3.5;ctx.stroke();
-    // Inner helmet ring
-    ctx.strokeStyle=this.color.glow;ctx.lineWidth=1.5;ctx.globalAlpha=.5;
-    ctx.beginPath();ctx.arc(0,headY,headR+1,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
-    // Helmet top crest - larger, armored
-    ctx.fillStyle=this.color.accent;
-    ctx.beginPath();ctx.moveTo(-10,headY-headR-4);ctx.quadraticCurveTo(-5,headY-headR-18,-3,headY-headR-22);ctx.quadraticCurveTo(0,headY-headR-26,3,headY-headR-22);ctx.quadraticCurveTo(5,headY-headR-18,10,headY-headR-4);ctx.closePath();ctx.fill();
-    ctx.strokeStyle=this.color.glow;ctx.lineWidth=1.5;ctx.stroke();
-    // Crest center gem
-    ctx.fillStyle='#fff';ctx.shadowColor=this.color.glow;ctx.shadowBlur=8;
-    ctx.beginPath();ctx.arc(0,headY-headR-15,3.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-    // Side antenna arrays
-    [-1,1].forEach(side=>{
-      const ax=headR*side*1.1,ay=headY-5;
-      ctx.strokeStyle=this.color.glow;ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(side*(headR+2),ay-2);ctx.lineTo(side*(headR+8),ay-16);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(side*(headR+3),ay+1);ctx.lineTo(side*(headR+12),ay-12);ctx.stroke();
-      // Antenna tip glow
-      ctx.fillStyle=this.color.glow;ctx.shadowColor=this.color.glow;ctx.shadowBlur=6;
-      ctx.beginPath();ctx.arc(side*(headR+8),ay-16,2.5,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(side*(headR+12),ay-12,2,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;
-    });
-
-    // === FACE (aggressive visor + facial structure) ===
-    ctx.save();
-    ctx.beginPath();ctx.arc(0,headY,headR+2,0,Math.PI*2);ctx.clip();
-    // Dark face cavity
-    const faceG=ctx.createRadialGradient(0,headY-2,3,0,headY,headR);
-    faceG.addColorStop(0,'#1a1a28');faceG.addColorStop(1,'#0a0a0f');
-    ctx.fillStyle=faceG;ctx.fillRect(-headR-6,headY-headR-6,(headR+6)*2,(headR+6)*2);
-
-    // Angled visor - V-shaped aggressive
-    const visorY=headY-3;
-    const visorGlow=this.color.glow;
-    ctx.fillStyle=visorGlow;ctx.shadowColor=visorGlow;ctx.shadowBlur=12;
-    // Left eye visor (angled up outward)
-    ctx.beginPath();ctx.moveTo(-headR+2,visorY+4);ctx.lineTo(-10,visorY-6);ctx.lineTo(-4,visorY-2);ctx.lineTo(-4,visorY+5);ctx.closePath();ctx.fill();
-    // Right eye visor
-    ctx.beginPath();ctx.moveTo(headR-2,visorY+4);ctx.lineTo(10,visorY-6);ctx.lineTo(4,visorY-2);ctx.lineTo(4,visorY+5);ctx.closePath();ctx.fill();
-    // Center visor column
-    ctx.fillStyle=visorGlow;
-    ctx.fillRect(-3,visorY-7,6,14);
-    // Visor inner bright line
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=6;
-    ctx.fillRect(-1,visorY-6,2,12);
-    ctx.shadowColor=visorGlow;ctx.shadowBlur=10;
-
-    // Jaw plate
-    const jawY=headY+13;
-    ctx.fillStyle='#2a2a3a';ctx.strokeStyle=this.color.accent;ctx.lineWidth=1.5;
-    roundRect(ctx,-12,jawY-5,24,10,4);ctx.fill();ctx.stroke();
-    // Jaw grill vents - animated glow
-    const ventAlpha=.3+.2*Math.sin(this.animTime*4);
-    ctx.strokeStyle=this.color.glow;ctx.globalAlpha=ventAlpha;ctx.lineWidth=1;
-    for(let i=-3;i<=3;i++){
-      ctx.beginPath();ctx.moveTo(i*2.8,jawY-3);ctx.lineTo(i*2.8,jawY+3);ctx.stroke();
-    }
-    ctx.globalAlpha=1;
-    // Jaw center light
-    ctx.fillStyle=this.color.glow;ctx.shadowColor=this.color.glow;ctx.shadowBlur=4;
-    ctx.beginPath();ctx.arc(0,jawY,3,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-    ctx.restore();
-
-    // Helmet rim highlight
-    ctx.strokeStyle=this.color.accent;ctx.lineWidth=3.5;
-    ctx.beginPath();ctx.arc(0,headY,headR+6,0,Math.PI*2);ctx.stroke();
-    // Outer rim notch details
-    ctx.strokeStyle=this.color.glow;ctx.lineWidth=1;ctx.globalAlpha=.6;
-    for(let a=0;a<Math.PI*2;a+=Math.PI/6){
-      ctx.beginPath();ctx.arc(Math.cos(a)*(headR+7),headY+Math.sin(a)*(headR+7),2,0,Math.PI*2);ctx.stroke();
-    }
-    ctx.globalAlpha=1;
-
-    // === ARMS (heavy artillery cannons) ===
-    [-1,1].forEach(side=>{
-      const armAngle=side===1?(.2+this.armR):(-.2+this.armL);
-      ctx.save();ctx.translate(side*(bodyW/2+8),bodyY-bodyH/2+12);ctx.rotate(armAngle);
-      // Upper arm (bicep armor)
-      const uaG=ctx.createLinearGradient(0,-4,0,14);
-      uaG.addColorStop(0,'#1a1a2e');uaG.addColorStop(.3,this.color.accent);uaG.addColorStop(.7,this.color.body);uaG.addColorStop(1,this.color.accent);
-      ctx.fillStyle=uaG;
-      roundRect(ctx,-9,-4,18,16,7);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=2;ctx.stroke();
-      // Elbow joint
-      ctx.fillStyle=this.color.glow;ctx.beginPath();ctx.arc(0,12,5,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=this.color.glow;ctx.lineWidth=1;ctx.globalAlpha=.6;
-      ctx.beginPath();ctx.arc(0,12,7,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
-      // Forearm / cannon housing
-      const faG=ctx.createLinearGradient(0,14,0,38);
-      faG.addColorStop(0,this.color.body);faG.addColorStop(.5,this.color.accent);faG.addColorStop(1,'#1a1a28');
-      ctx.fillStyle=faG;
-      roundRect(ctx,-9,14,18,26,6);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=2;ctx.stroke();
-      // Barrel rings
-      for(let br=0;br<3;br++){
-        ctx.strokeStyle=this.color.glow;ctx.lineWidth=1;ctx.globalAlpha=.5;
-        ctx.beginPath();ctx.moveTo(-9,20+br*8);ctx.lineTo(9,20+br*8);ctx.stroke();
-        ctx.globalAlpha=1;
-      }
-      // Inner cannon barrel (darker)
-      ctx.fillStyle='#222';ctx.fillRect(-5,34,10,20);
-      // Barrel tip
-      ctx.fillStyle=this.color.accent;ctx.fillRect(-7,50,14,6);
-      // Muzzle glow
-      const mf=Math.sin(this.animTime*4)*.4+.6;
-      const mzG=ctx.createRadialGradient(0,58,2,0,58,10*mf);
-      mzG.addColorStop(0,'#fff');mzG.addColorStop(.3,this.color.glow);mzG.addColorStop(1,'transparent');
-      ctx.fillStyle=mzG;ctx.shadowColor=this.color.glow;ctx.shadowBlur=10*mf;
-      ctx.beginPath();ctx.arc(0,58,10*mf,0,Math.PI*2);ctx.fill();
-      // Secondary barrel (small)
-      ctx.fillStyle='#333';ctx.fillRect(side*4,46,5,8);
-      ctx.fillStyle=this.color.glow;ctx.shadowColor=this.color.glow;ctx.shadowBlur=4*mf;
-      ctx.beginPath();ctx.arc(side*6.5,56,3,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;
-      ctx.restore();
-    });
-
-    // === BACK THRUSTERS (jetpack style) ===
-    const btBaseY=bodyY+bodyH/2-8;
-    [-1,1].forEach(side=>{
-      const btx=side*(bodyW/2-4),bty=btBaseY;
-      // Thruster housing
-      const thG=ctx.createLinearGradient(0,bty-6,0,bty+8);
-      thG.addColorStop(0,'#1a1a2e');thG.addColorStop(.5,this.color.body);thG.addColorStop(1,'#111');
-      ctx.fillStyle=thG;
-      roundRect(ctx,btx-8,bty-4,16,14,4);ctx.fill();
-      ctx.strokeStyle=this.color.accent;ctx.lineWidth=1.5;ctx.stroke();
-      // Nozzle
-      ctx.fillStyle='#1a1a28';ctx.fillRect(btx-6,bty+8,12,4);
-      // Thruster flame
-      const btFlame=Math.sin(this.animTime*4+side)*5+16;
-      const btG=ctx.createLinearGradient(btx,bty+10,btx,bty+10+btFlame+8);
-      btG.addColorStop(0,'#fff');btG.addColorStop(.15,this.color.glow);btG.addColorStop(.4,this.color.accent);btG.addColorStop(.7,this.color.body);btG.addColorStop(1,'transparent');
-      ctx.fillStyle=btG;
-      ctx.beginPath();ctx.moveTo(btx-5,bty+10);ctx.quadraticCurveTo(btx-2,bty+10+btFlame*.5,btx,bty+10+btFlame);ctx.quadraticCurveTo(btx+2,bty+10+btFlame*.5,btx+5,bty+10);ctx.fill();
-      // Inner flame (brighter)
-      const btIG=ctx.createLinearGradient(btx,bty+10,btx,bty+10+btFlame*.6);
-      btIG.addColorStop(0,'#fff');btIG.addColorStop(1,'transparent');
-      ctx.fillStyle=btIG;
-      ctx.beginPath();ctx.moveTo(btx-2,bty+10);ctx.lineTo(btx,bty+10+btFlame*.5);ctx.lineTo(btx+2,bty+10);ctx.fill();
-    });
+    // Nameplate background behind name
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    roundRect(ctx,-50,-80,100,24,12);ctx.fill();
+    ctx.strokeStyle=this.color.accent;ctx.lineWidth=2;
+    roundRect(ctx,-50,-80,100,24,12);ctx.stroke();
 
     // === HEALTH BAR ===
     const barW=80,barH=8,barY=-95;
@@ -1340,12 +1118,16 @@ class Boss{
     // HP segments
     ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=.5;
     for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(-barW/2+barW*i/5,barY);ctx.lineTo(-barW/2+barW*i/5,barY+barH);ctx.stroke()}
-    // Name with glow
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=4;
-    ctx.font='bold 12px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText(this.name,0,barY-8);
-    ctx.fillStyle=this.color.accent;ctx.font='bold 9px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('BOSS Lv.'+(this.level+1),0,barY+barH+12);
+    // Name with HUGE GLOW - instantly visible to everyone playing
+    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=14;
+    ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText(this.name,0,barY-10);
+    ctx.fillStyle=this.color.glow;ctx.shadowColor=this.color.glow;ctx.shadowBlur=22;
+    ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(this.name,0,barY-10);
+    ctx.shadowBlur=0;
+    ctx.fillStyle=this.color.accent;ctx.font='bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('BOSS Lv.'+(this.level+1),0,barY+barH+15);
 
     ctx.shadowColor='transparent';ctx.shadowBlur=0;
     ctx.restore();
@@ -1491,7 +1273,7 @@ function useBomb(){
 // ==================== WAVE SYSTEM ====================
 function spawnWave(){
   wavesCleared++;
-  const mult=difficulty==='easy'?0.7:1.3;
+  const mult=difficulty==='rookie'?0.6:difficulty==='veteran'?1:1.5;
   const count=Math.floor((3+wavesCleared+level*1.5)*mult);
   for(let i=0;i<count;i++){
     const type=Math.random()<.15?'large':Math.random()<.35?'medium':'small';
@@ -1501,7 +1283,11 @@ function spawnWave(){
 
 // ==================== GAME FLOW ====================
 function resetGame(){
-  score=0;lives=5;level=0;bombs=3;
+  score=0;
+  if(difficulty==='rookie'){lives=8;bombs=6}
+  else if(difficulty==='veteran'){lives=5;bombs=3}
+  else{lives=3;bombs=1}
+  level=0;
   enemies=[];bullets=[];powerUps=[];particles.length=0;particleIndex=0;
   scorePopups.length=0;boss=null;
   wavesCleared=0;
@@ -1538,7 +1324,7 @@ function nextLevel(){
   }else{
     wavesCleared=0;
     boss=null;
-    lives=Math.min(lives+1,5);
+    lives=Math.min(lives+(difficulty==='rookie'?2:1),difficulty==='rookie'?8:5);
     spawnWave();
     state=STATE.PLAYING;
   }
@@ -1817,14 +1603,14 @@ function draw(){
   ctx.fillText('火力: '+powerName,W-12,70);ctx.shadowBlur=0;
 
   // Difficulty indicator
-  ctx.fillStyle=difficulty==='easy'?'#2ecc71':'#e74c3c';ctx.shadowColor=difficulty==='easy'?'#2ecc71':'#e74c3c';ctx.shadowBlur=5;
+  ctx.fillStyle=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowColor=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowBlur=5;
   ctx.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(difficulty==='easy'?'简单':'困难',W-12,88);ctx.shadowBlur=0;
+  ctx.fillText(difficulty==='rookie'?'新手上路':difficulty==='veteran'?'老兵':'封狗',W-12,88);ctx.shadowBlur=0;
 
   // Level/wave info
   if(!boss&&state===STATE.PLAYING){
     ctx.fillStyle='rgba(255,255,255,.5)';ctx.textAlign='center';ctx.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('第'+(level+1)+'关  敌兵波次 '+(wavesCleared+1)+'/'+wavesPerLevel,W/2,28);
+    ctx.fillText('第'+(level+1)+'关 · 波次'+(wavesCleared+1)+'/'+wavesPerLevel+'  Boss:'+bossNames[Math.min(level,bossNames.length-1)],W/2,28);
   }
 
   // Score popups
@@ -1838,16 +1624,26 @@ function draw(){
   if(state===STATE.BOSS_INTRO&&boss){
     const alpha=stateTimer<20?stateTimer/20:1;
     ctx.fillStyle=`rgba(0,0,0,${alpha*.75})`;ctx.fillRect(0,0,W,H);
-    // WARNING text
+    // WARNING text - HUGE so everyone sees it
     if(stateTimer<40&&Math.floor(stateTimer/6)%2===0){
-      ctx.fillStyle='#ff0000';ctx.shadowColor='#ff0000';ctx.shadowBlur=40;
-      ctx.font='bold 48px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-      ctx.fillText('⚠ WARNING ⚠',W/2,H/2-60);
+      ctx.fillStyle='#ff0000';ctx.shadowColor='#ff0000';ctx.shadowBlur=80;
+      ctx.font='bold 80px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+      ctx.fillText('⚠ WARNING ⚠',W/2,H/2-90);
       ctx.shadowBlur=0;
     }
-    ctx.fillStyle='#fff';ctx.font='bold 30px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText(boss.name+' 来袭！',W/2,H/2);
-    ctx.fillText('第 '+(level+1)+' 关 Boss',W/2,H/2+40);
+    // Boss name - MASSIVE with animated scale-in
+    const bns=Math.min(1,stateTimer/20);
+    ctx.save();ctx.translate(W/2,H/2-10);ctx.scale(bns,bns);
+    ctx.fillStyle='#fff';ctx.shadowColor=boss.color.glow;ctx.shadowBlur=40;
+    ctx.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText(boss.name,0,0);
+    ctx.shadowBlur=0;
+    ctx.fillStyle=boss.color.accent;ctx.shadowColor=boss.color.accent;ctx.shadowBlur=22;
+    ctx.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(boss.name,0,0);
+    ctx.shadowBlur=0;ctx.restore();
+    ctx.fillStyle='#fff';ctx.font='bold 28px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText('第 '+(level+1)+' 关 Boss · 准备迎战！',W/2,H/2+60);
   }
 
   // LEVEL COMPLETE
@@ -1867,60 +1663,74 @@ function draw(){
   // GAME OVER
   if(state===STATE.GAME_OVER){
     ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    drawNeonText(ctx,'被击败了',W/2,H/2-50,'#e74c3c',40,20);
-    ctx.fillStyle='#fff';ctx.font='18px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('最终分数: '+score,W/2,H/2+10);
-    ctx.fillText('点击屏幕再来挑战',W/2,H/2+55);
+    drawNeonText(ctx,'被击败了',W/2,H/2-60,'#e74c3c',56,32);
+    ctx.fillStyle='#fff';ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText('最终分数: '+score,W/2,H/2+15);
+    ctx.font='20px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('点击屏幕再来挑战',W/2,H/2+60);
   }
 
   // VICTORY
   if(state===STATE.VICTORY){
     ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    drawNeonText(ctx,'大获全胜！',W/2,H/2-60,'#f1c40f',42,25);
-    ctx.fillStyle='#fff';ctx.font='17px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('所有朋友都被击败了！',W/2,H/2);
-    ctx.fillText('最终分数: '+score,W/2,H/2+30);
-    ctx.fillText('点击屏幕再来一局',W/2,H/2+70);
+    drawNeonText(ctx,'大获全胜！',W/2,H/2-70,'#f1c40f',60,38);
+    ctx.fillStyle='#fff';ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillText('所有朋友都被击败了！',W/2,H/2+5);
+    ctx.font='22px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('最终分数: '+score,W/2,H/2+35);
+    ctx.font='20px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('点击屏幕再来一局',W/2,H/2+80);
   }
 
   // DIFFICULTY SELECTION
   if(state===STATE.DIFF_SELECT){
-    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    drawNeonText(ctx,'选择难度',W/2,H/2-90,'#fff',34,15);
-    ctx.font='15px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,0,W,H);
+    drawNeonText(ctx,'选择难度',W/2,H/2-115,'#fff',38,20);
+    ctx.font='14px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
     ctx.fillStyle='rgba(255,255,255,.5)';
-    ctx.fillText('简单模式：朋友比较弱，轻松击败看剧情',W/2,H/2-35);
-    ctx.fillText('困难模式：朋友们火力全开，你能撑多久？',W/2,H/2-5);
-    // Easy button
-    const easyGlow=difficulty==='easy'?25:0;
-    ctx.fillStyle='#27ae60';ctx.shadowColor='#27ae60';ctx.shadowBlur=easyGlow;
-    roundRect(ctx,W/2-100,H/2+25,200,48,25);ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#fff';ctx.font='bold 20px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('🟢 简 单',W/2,H/2+55);
-    // Hard button
-    const hardGlow=difficulty==='hard'?25:0;
-    ctx.fillStyle='#e74c3c';ctx.shadowColor='#e74c3c';ctx.shadowBlur=hardGlow;
-    roundRect(ctx,W/2-100,H/2+85,200,48,25);ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#fff';ctx.font='bold 20px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('🔴 困 难',W/2,H/2+115);
+    ctx.fillText('新手上路：尽情爽玩，火力全开！',W/2,H/2-52);
+    ctx.fillText('老兵：朋友认真了，注意闪避！',W/2,H/2-25);
+    ctx.fillText('封狗：地狱难度，极限生存！',W/2,H/2+2);
+    // Rookie button
+    const rGlow=difficulty==='rookie'?30:0;
+    ctx.fillStyle='#27ae60';ctx.shadowColor='#27ae60';ctx.shadowBlur=rGlow;
+    roundRect(ctx,W/2-110,H/2+18,220,46,25);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='#fff';ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('🟢 新手上路',W/2,H/2+47);
+    // Veteran button
+    const vGlow=difficulty==='veteran'?30:0;
+    ctx.fillStyle='#e67e22';ctx.shadowColor='#e67e22';ctx.shadowBlur=vGlow;
+    roundRect(ctx,W/2-110,H/2+70,220,46,25);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='#fff';ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('🟠 老 兵',W/2,H/2+99);
+    // Elite button
+    const eGlow=difficulty==='elite'?35:0;
+    ctx.fillStyle='#c0392b';ctx.shadowColor='#c0392b';ctx.shadowBlur=eGlow;
+    roundRect(ctx,W/2-110,H/2+122,220,46,25);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='#fff';ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('🔴 封 狗',W/2,H/2+151);
   }
 
   // MENU OVERLAY
   if(state===STATE.MENU){
     ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);
     const titleY=H*.3;
-    // Title glow
-    ctx.shadowColor='#ff6b6b';ctx.shadowBlur=40;
-    ctx.fillStyle='#fff';ctx.font='bold 46px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+    // Title glow - MASSIVE, dominating screen
+    ctx.shadowColor='#ff6b6b';ctx.shadowBlur=60;
+    ctx.fillStyle='#fff';ctx.font='bold 62px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
     ctx.fillText('击败你的朋友们',W/2,titleY);
     ctx.shadowBlur=0;
-    ctx.fillStyle='#f39c12';ctx.font='bold 18px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('好友对决',W/2,titleY+38);
-    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='14px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('打败你的好兄弟们！',W/2,titleY+68);
+    ctx.fillStyle='#ff3333';ctx.shadowColor='#ff4444';ctx.shadowBlur=35;
+    ctx.font='bold 62px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('击败你的朋友们',W/2,titleY);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#f39c12';ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('🔥 好友对决 🔥',W/2,titleY+50);
+    ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='bold 20px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('打败你的好兄弟们！',W/2,titleY+88);
     const names=bossNames.join('  ·  ');
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font='12px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(names,W/2,titleY+95);
+    ctx.fillStyle='rgba(255,255,255,.55)';ctx.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(names,W/2,titleY+120);
 
     ctx.fillStyle='#fff';ctx.font='15px "PingFang SC","Microsoft YaHei",sans-serif';
     ctx.fillText('电脑: 方向键移动 | 手机: 滑动操控',W/2,H*.68);
@@ -1967,6 +1777,8 @@ function gameLoop(){
 
 // ==================== INIT ====================
 initBackground();
+preloadBackgroundImages();
+preloadBossImages();
 player=new Player();
 enemies=[];bullets=[];powerUps=[];
 particles.length=0;boss=null;
