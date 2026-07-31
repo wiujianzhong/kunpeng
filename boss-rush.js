@@ -21,16 +21,24 @@
     'upgradeChoices', 'resultScreen', 'resultStamp', 'resultTitle', 'resultSummary',
     'resultStats', 'shareResultButton', 'rematchButton', 'createAnotherButton',
     'soundButton', 'reduceMotionButton', 'introOverlay', 'upgradeTitle', 'upgradeSubtitle',
-    'mobileUploadButton', 'mobileQuickPlayButton'
+    'mobileUploadButton', 'mobileQuickPlayButton', 'mobileUploadStatus'
   ];
 
   const dom = {};
   const CONFIG_PREFIX = '#br=';
   const FIGHTERS = {
-    ray: { name: '曜光', hp: 100, speed: 340, rate: 0.115, damage: 18, color: '#5cf6ff', desc: '稳定激光 · 精准续航' },
-    falcon: { name: '赤隼', hp: 82, speed: 400, rate: 0.26, damage: 13, color: '#ff8066', desc: '近战散射 · 高风险爆发' },
-    turtle: { name: '玄武', hp: 132, speed: 275, rate: 0.22, damage: 23, color: '#72ffac', desc: '护盾反伤 · 稳健推进' },
+    ray: { name: '电鳐', hp: 100, speed: 340, rate: 0.115, damage: 18, color: '#5cf6ff', desc: '稳定激光 · 精准续航' },
+    falcon: { name: '猎隼', hp: 82, speed: 400, rate: 0.26, damage: 13, color: '#ff8066', desc: '近战散射 · 高风险爆发' },
+    turtle: { name: '玄甲', hp: 132, speed: 275, rate: 0.22, damage: 23, color: '#72ffac', desc: '护盾反伤 · 稳健推进' },
     ghost: { name: '幽灵', hp: 88, speed: 440, rate: 0.09, damage: 15, color: '#c08cff', desc: '相位穿透 · 隐藏战机' }
+  };
+
+  const SPRITE_PATHS = {
+    ray: 'assets/boss-rush/sprites/ray.png',
+    falcon: 'assets/boss-rush/sprites/falcon.png',
+    turtle: 'assets/boss-rush/sprites/turtle.png',
+    ghost: 'assets/boss-rush/sprites/ray.png',
+    boss: 'assets/boss-rush/sprites/boss.png'
   };
 
   const THEMES = {
@@ -64,14 +72,14 @@
   ];
 
   const LINES = {
-    entrance: ['检测到菜鸟。火控系统上线。', '今天必须留下——至少留下你的战绩。', '警告：这里没有新手保护。', '老板很满意，但你今天的工资没了。', '听说你的操作很强？我已经开始笑了。'],
-    phase2: ['不错，第二层装甲为你打开。', '战术升级。你的路线已经被记录。', '热身结束，现在才是正题。'],
-    phase3: ['核心过载！最终协议启动！', '很好，你逼出了我的底牌。', '最后阶段——别在终点前失误。'],
-    counter: ['你的习惯太明显了。', '路线已识别，正在实施反制。', '同一招，不会永远有效。'],
-    playerHit: ['菜就多练。', '你已坚持了几秒，值得表扬。', '建议卸载。', '老板很满意，但你的工资没了。', '重开吧，这波我当没看见。', '继续送，我的战绩就快凑够了。'],
-    critical: ['命中核心！漂亮的一击。', '装甲破裂，继续压制！', '好准，但别忘了走位。'],
-    victory: ['协议终止。你赢得很漂亮。', '核心离线……胜者已记录。'],
-    defeat: ['挑战结束。调整构筑，再来。', '这次我守住了。下一局见。']
+    entrance: ['本人已上线，友情已下线。', '别盯着头像看，打坏了你赔。', '先说好，打赢只代表我今天网卡。'],
+    phase2: ['热身结束，刚才那段我就当没看见。', '第二层装甲开了，你的第二个借口呢？', '有点东西，先别急着截图。'],
+    phase3: ['最后一层了，咱俩至少有一个要丢脸。', '核心过热，友情也差不多了。'],
+    counter: ['你的习惯太明显了。', '同一招，不会永远有效。'],
+    playerHit: ['这一发不疼，主要伤自尊。', '别慌，慌了看起来更像节目。', '走位不错——刚好走进来了。'],
+    critical: ['哦？这一下算你蒙对。', '装甲掉了，嘴还硬着。', '等一下，我检查你是不是偷偷练过。'],
+    victory: ['行，今天算你有操作，明天我不认。'],
+    defeat: ['再来一局，我保证还是这张脸。']
   };
 
   class Pool {
@@ -162,6 +170,19 @@
       else if (name === 'boom') { this.noise(0.34, 0.2); this.tone(70, 0.3, 'sawtooth', 0.1, -28); }
       else if (name === 'win') [392, 523, 659, 784].forEach((f, i) => setTimeout(() => this.tone(f, 0.24, 'triangle', 0.09), i * 120));
     }
+    radio(line) {
+      if (!this.ctx || this.muted) return;
+      this.noise(0.055, 0.09);
+      const glyphs = Array.from(String(line || ''));
+      const syllables = clamp(Math.ceil(glyphs.length / 4), 4, 8);
+      const base = this.phase === 3 ? 118 : 92;
+      for (let i = 0; i < syllables; i++) {
+        const code = glyphs[i * 3]?.charCodeAt(0) || i * 17;
+        const frequency = base + code % 72 + (i % 2 ? 38 : 0);
+        setTimeout(() => this.tone(frequency, 0.065, i % 3 ? 'square' : 'sawtooth', 0.045, i % 2 ? 18 : -12), 70 + i * (this.phase === 3 ? 72 : 88));
+      }
+      setTimeout(() => this.noise(0.045, 0.07), 100 + syllables * (this.phase === 3 ? 72 : 88));
+    }
     startBgm(phase = 1) {
       this.phase = phase;
       this.unlock();
@@ -198,7 +219,6 @@
       this.muted = !this.muted;
       if (this.master) this.master.gain.value = this.muted ? 0 : 0.16;
       if (!this.muted && this.ctx) this.nextNote = this.ctx.currentTime;
-      if (this.muted && 'speechSynthesis' in window) window.speechSynthesis.cancel();
       return this.muted;
     }
   }
@@ -210,7 +230,7 @@
   const state = {
     screen: 'home', mode: 'idle', w: 900, h: 900, dpr: 1, ctx: null,
     config: { name: '终焉机甲', title: '自适应战术核心', theme: 'cyber', avatar: '' },
-    fighter: 'ray', theme: 'cyber', avatarImage: null, raf: 0, last: 0, elapsed: 0,
+    fighter: 'ray', theme: 'cyber', avatarImage: null, sprites: {}, raf: 0, last: 0, elapsed: 0,
     countdown: 120, phase: 1, score: 0, combo: 0, comboClock: 0, shake: 0,
     hitStop: 0, fps: 60, fpsTime: 0, fpsFrames: 0, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
     keys: new Set(), pointer: { active: false, x: 0, y: 0, lastX: 0, lastY: 0, type: '' },
@@ -218,7 +238,7 @@
     attackClock: 0, attackIndex: 0, counterClock: 0, historyClock: 0, history: [], dashTimes: [],
     modulesUsed: [], upgradesTaken: 0, pendingUpgrade: false, introStart: 0, introTimer: 0, pausedFrom: '', gameStart: 0,
     bags: {}, fired: 0, hits: 0, damageTaken: 0, ghostUnlocked: storageGet('bossRushGhost') === '1',
-    resultWon: false, rating: 'C'
+    resultWon: false, rating: 'C', lastTauntAt: -99
   };
 
   function init() {
@@ -227,6 +247,7 @@
     state.ctx = dom.gameCanvas.getContext('2d', { alpha: false });
     state.ctx.imageSmoothingEnabled = true;
     bindUi();
+    loadSprites();
     resizeCanvas();
     loadHashConfig();
     updateUnlockUi();
@@ -245,7 +266,6 @@
     dom.createBossButton?.addEventListener('click', createBoss);
     dom.quickPlayButton?.addEventListener('click', quickPlay);
     dom.mobileQuickPlayButton?.addEventListener('click', quickPlay);
-    dom.mobileUploadButton?.addEventListener('click', () => dom.avatarInput?.click());
     dom.shareLinkButton?.addEventListener('click', () => {
       if (!syncConfigFromForm(true)) return;
       const encoded = encodeConfig(state.config);
@@ -263,13 +283,12 @@
     dom.soundButton?.addEventListener('click', () => { audio.toggle(); updateSoundUi(); });
     dom.reduceMotionButton?.addEventListener('click', () => { state.reduced = !state.reduced; updateMotionUi(); });
 
-    const bossBay = dom.app?.querySelector('.boss-bay[role="button"]');
-    bossBay?.addEventListener('click', () => dom.avatarInput?.click());
-    bossBay?.addEventListener('keydown', (event) => {
+    const uploadLabels = [dom.mobileUploadButton, dom.app?.querySelector('.boss-bay[for="avatarInput"]')].filter(Boolean);
+    uploadLabels.forEach((label) => label.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      dom.avatarInput?.click();
-    });
+      label.click();
+    }));
 
     dom.themeGrid?.addEventListener('click', (event) => {
       const card = event.target.closest('[data-theme]');
@@ -350,40 +369,67 @@
   }
 
   function creatorMessage(message, error = false) {
-    if (!dom.creatorStatus) return;
-    dom.creatorStatus.textContent = message;
-    dom.creatorStatus.classList.toggle('error', error);
+    if (dom.creatorStatus) {
+      dom.creatorStatus.textContent = message;
+      dom.creatorStatus.classList.toggle('error', error);
+    }
+    if (dom.mobileUploadStatus) {
+      dom.mobileUploadStatus.textContent = message;
+      dom.mobileUploadStatus.classList.toggle('error', error);
+    }
   }
 
   function quickPlay() {
-    state.config = { name: '终焉机甲', title: '自适应战术核心', theme: state.theme || 'cyber', avatar: '' };
-    state.avatarImage = null;
+    state.config = {
+      name: safeText(dom.bossNameInput?.value, '终焉机甲', 12),
+      title: safeText(dom.bossTitleInput?.value, '自适应战术核心', 20),
+      theme: THEMES[state.theme] ? state.theme : 'cyber',
+      avatar: state.config.avatar || ''
+    };
     enterLoadout();
   }
 
   async function handleAvatar(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 6 * 1024 * 1024) {
-      creatorMessage('请选择不超过6MB的 JPG、PNG 或 WebP 图片', true);
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const supportedExtension = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(extension);
+    const supportedMime = file.type.startsWith('image/') || (!file.type && supportedExtension);
+    if (!supportedMime) {
+      creatorMessage('这不是可识别的照片，请从照片库重新选择', true);
       event.target.value = '';
       return;
     }
-    creatorMessage('正在生成机械核心…');
+    if (file.size > 20 * 1024 * 1024) {
+      creatorMessage('照片超过20MB，请选原图以外的普通版本', true);
+      event.target.value = '';
+      return;
+    }
+    creatorMessage(`已选择 ${file.name || 'iPhone 照片'}，正在装入 Boss 核心…`);
+    dom.avatarInput.disabled = true;
+    dom.mobileUploadButton?.setAttribute('aria-busy', 'true');
     let url = '';
     try {
       url = URL.createObjectURL(file);
       const image = await loadImage(url);
-      if (image.naturalWidth * image.naturalHeight > 36_000_000) throw new Error('图片像素过大');
+      if (image.naturalWidth * image.naturalHeight > 60_000_000) throw new Error('像素过大');
       const result = processAvatar(image);
       state.config.avatar = result;
       state.avatarImage = await loadImage(result);
       showAvatarPreview(result);
-      creatorMessage('头像已本地处理，不会上传原图');
+      const uploadState = dom.avatarInput.closest('.avatar-upload-row')?.querySelector('.upload-state');
+      if (uploadState) uploadState.innerHTML = 'CORE<br>LOCKED';
+      navigator.vibrate?.(35);
+      creatorMessage('头像已装进 Boss 核心，原图不会上传');
     } catch (error) {
-      creatorMessage('图片处理失败，请换一张重试', true);
+      const reason = error?.message === '像素过大'
+        ? '照片超过6000万像素，请关闭原始格式后重试'
+        : 'Safari 无法解码这张照片，请截图后再选一次';
+      creatorMessage(reason, true);
     } finally {
       if (url) URL.revokeObjectURL(url);
+      dom.avatarInput.disabled = false;
+      dom.mobileUploadButton?.removeAttribute('aria-busy');
       event.target.value = '';
     }
   }
@@ -397,60 +443,40 @@
     });
   }
 
+  function loadSprites() {
+    Object.entries(SPRITE_PATHS).forEach(([key, src]) => {
+      loadImage(src).then((image) => { state.sprites[key] = image; }).catch(() => { /* 保留 Canvas 降级绘制 */ });
+    });
+  }
+
   function processAvatar(image) {
-    const size = 96;
+    const size = 256;
     const work = document.createElement('canvas');
     work.width = work.height = size;
-    const ctx = work.getContext('2d', { willReadFrequently: true });
+    const ctx = work.getContext('2d');
     const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
     const sw = size / scale;
     const sh = size / scale;
     const sx = (image.naturalWidth - sw) / 2;
     const sy = (image.naturalHeight - sh) / 2;
     ctx.drawImage(image, sx, sy, sw, sh, 0, 0, size, size);
-    const pixels = ctx.getImageData(0, 0, size, size);
-    const samples = [];
-    const points = [[2, 2], [93, 2], [2, 93], [93, 93]];
-    for (const [x, y] of points) {
-      const index = (y * size + x) * 4;
-      samples.push([pixels.data[index], pixels.data[index + 1], pixels.data[index + 2]]);
-    }
-    const bg = [0, 1, 2].map((channel) => samples.reduce((sum, value) => sum + value[channel], 0) / samples.length);
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const index = (y * size + x) * 4;
-        const dr = pixels.data[index] - bg[0];
-        const dg = pixels.data[index + 1] - bg[1];
-        const db = pixels.data[index + 2] - bg[2];
-        const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-        const colorAlpha = smoothstep(20, 78, distance);
-        const edge = Math.min(x, y, size - 1 - x, size - 1 - y);
-        const edgeAlpha = smoothstep(0, 8, edge);
-        pixels.data[index + 3] = Math.round(pixels.data[index + 3] * Math.min(colorAlpha, edgeAlpha));
-      }
-    }
-    ctx.putImageData(pixels, 0, 0);
 
     const output = document.createElement('canvas');
-    output.width = output.height = 64;
+    output.width = output.height = 192;
     const out = output.getContext('2d');
     out.save();
     out.beginPath();
-    out.arc(32, 32, 30, 0, TAU);
+    out.arc(96, 96, 94, 0, TAU);
     out.clip();
-    out.drawImage(work, 0, 0, 64, 64);
-    const shade = out.createRadialGradient(32, 29, 13, 32, 32, 34);
-    shade.addColorStop(0.5, 'rgba(0,0,0,0)');
-    shade.addColorStop(1, 'rgba(0,10,24,.55)');
+    out.drawImage(work, 0, 0, 192, 192);
+    const shade = out.createRadialGradient(96, 87, 39, 96, 96, 102);
+    shade.addColorStop(0.58, 'rgba(0,0,0,0)');
+    shade.addColorStop(1, 'rgba(0,10,24,.46)');
     out.fillStyle = shade;
-    out.fillRect(0, 0, 64, 64);
+    out.fillRect(0, 0, 192, 192);
     out.restore();
-    return output.toDataURL('image/webp', 0.58);
-  }
-
-  function smoothstep(a, b, value) {
-    const t = clamp((value - a) / (b - a), 0, 1);
-    return t * t * (3 - 2 * t);
+    const webp = output.toDataURL('image/webp', 0.8);
+    return webp.startsWith('data:image/webp') ? webp : output.toDataURL('image/png');
   }
 
   function showAvatarPreview(src) {
@@ -463,9 +489,9 @@
     if (dom.avatarCanvas) {
       const ctx = dom.avatarCanvas.getContext?.('2d');
       if (ctx && state.avatarImage) {
-        dom.avatarCanvas.width = dom.avatarCanvas.height = 96;
-        ctx.clearRect(0, 0, 96, 96);
-        ctx.drawImage(state.avatarImage, 0, 0, 96, 96);
+        dom.avatarCanvas.width = dom.avatarCanvas.height = 192;
+        ctx.clearRect(0, 0, 192, 192);
+        ctx.drawImage(state.avatarImage, 0, 0, 192, 192);
       }
     }
   }
@@ -505,7 +531,7 @@
 
   function encodeConfig(config) {
     try {
-      const clean = { v: 1, n: safeText(config.name, '终焉机甲', 12), t: safeText(config.title, '自适应战术核心', 20), m: THEMES[config.theme] ? config.theme : 'cyber', a: /^data:image\/webp;base64,/.test(config.avatar || '') ? config.avatar : '' };
+      const clean = { v: 1, n: safeText(config.name, '终焉机甲', 12), t: safeText(config.title, '自适应战术核心', 20), m: THEMES[config.theme] ? config.theme : 'cyber', a: /^data:image\/(webp|png|jpeg);base64,/.test(config.avatar || '') ? config.avatar : '' };
       const bytes = new TextEncoder().encode(JSON.stringify(clean));
       let binary = '';
       bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
@@ -523,7 +549,7 @@
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
       const data = JSON.parse(new TextDecoder().decode(bytes));
       if (!data || data.v !== 1) return null;
-      const avatar = typeof data.a === 'string' && data.a.length < 50000 && /^data:image\/webp;base64,/.test(data.a) ? data.a : '';
+      const avatar = typeof data.a === 'string' && data.a.length < 60000 && /^data:image\/(webp|png|jpeg);base64,/.test(data.a) ? data.a : '';
       return { name: safeText(data.n, '终焉机甲', 12), title: safeText(data.t, '自适应战术核心', 20), theme: THEMES[data.m] ? data.m : 'cyber', avatar };
     } catch (error) {
       return null;
@@ -636,6 +662,7 @@
     state.fired = 0;
     state.hits = 0;
     state.damageTaken = 0;
+    state.lastTauntAt = -99;
     state.bags = {};
     bullets.clear();
     particles.clear();
@@ -726,9 +753,9 @@
       const title = dom.introOverlay.querySelector('[data-intro-title]');
       if (title) title.textContent = state.config.name;
     }
+    audio.startBgm(1);
     taunt('entrance');
     state.shake = state.reduced ? 0 : 16;
-    audio.startBgm(1);
     state.introTimer = setTimeout(finishIntro, 1800);
   }
 
@@ -1076,7 +1103,7 @@
       explanation = '中路盘旋太久，扇区开始收缩。';
       fanAttack();
     }
-    sayLine(`${state.config.name}：${explanation}`);
+    sayLine(explanation);
   }
 
   function recordHistory(dt) {
@@ -1518,30 +1545,64 @@
     ctx.save();
     ctx.translate(boss.x, boss.y + yOffset);
     ctx.scale(scale, scale);
-    ctx.rotate(Math.sin(now * 0.001) * 0.025);
+    ctx.rotate(state.reduced ? 0 : Math.sin(now * 0.001) * 0.018);
     const color = state.phase === 1 ? '#44ecff' : state.phase === 2 ? '#ffb347' : '#ff386c';
-    ctx.shadowBlur = 28; ctx.shadowColor = color;
-    ctx.strokeStyle = color; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(0, 0, boss.r, 0, TAU); ctx.stroke();
+    const pulse = state.reduced ? 1 : 1 + Math.sin(now * 0.004) * 0.035;
+    ctx.scale(pulse, pulse);
+    const aura = ctx.createRadialGradient(0, 0, boss.r * 0.35, 0, 0, boss.r * 2.3);
+    aura.addColorStop(0, hexAlpha(color, 0.24));
+    aura.addColorStop(0.46, hexAlpha(color, 0.09));
+    aura.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = aura;
+    ctx.fillRect(-boss.r * 2.4, -boss.r * 2.4, boss.r * 4.8, boss.r * 4.8);
+    ctx.shadowBlur = state.phase === 3 ? 42 : 28;
+    ctx.shadowColor = color;
+    ctx.strokeStyle = hexAlpha(color, 0.8);
+    ctx.lineWidth = state.phase === 3 ? 8 : 5;
+    ctx.beginPath();
+    ctx.arc(0, 0, boss.r * 0.78, 0, TAU);
+    ctx.stroke();
     ctx.shadowBlur = 0;
-    for (let i = 0; i < 6; i++) {
-      const a = boss.angle + i * TAU / 6;
-      ctx.save(); ctx.rotate(a); ctx.fillStyle = i % 2 ? '#26374d' : '#384e64';
-      ctx.beginPath(); ctx.moveTo(boss.r * 0.72, -9); ctx.lineTo(boss.r * 1.42, -15); ctx.lineTo(boss.r * 1.62, 0); ctx.lineTo(boss.r * 1.42, 15); ctx.lineTo(boss.r * 0.72, 9); ctx.closePath(); ctx.fill(); ctx.restore();
-    }
+
     ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, boss.r * 0.72, 0, TAU); ctx.clip();
-    if (state.avatarImage) ctx.drawImage(state.avatarImage, -boss.r * 0.72, -boss.r * 0.72, boss.r * 1.44, boss.r * 1.44);
+    ctx.beginPath();
+    ctx.arc(0, 0, boss.r * 0.63, 0, TAU);
+    ctx.clip();
+    if (state.avatarImage) ctx.drawImage(state.avatarImage, -boss.r * 0.66, -boss.r * 0.66, boss.r * 1.32, boss.r * 1.32);
     else {
-      const core = ctx.createRadialGradient(0, 0, 3, 0, 0, boss.r * 0.72);
+      const core = ctx.createRadialGradient(0, 0, 3, 0, 0, boss.r * 0.68);
       core.addColorStop(0, '#fff'); core.addColorStop(0.16, color); core.addColorStop(0.55, '#172237'); core.addColorStop(1, '#050810');
       ctx.fillStyle = core; ctx.fillRect(-boss.r, -boss.r, boss.r * 2, boss.r * 2);
-      ctx.strokeStyle = color; ctx.lineWidth = 3;
-      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(0, 0, boss.r * (0.2 + i * 0.14), boss.angle * (i % 2 ? -1 : 1), boss.angle + Math.PI * 1.2); ctx.stroke(); }
     }
-    if (boss.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-boss.r, -boss.r, boss.r * 2, boss.r * 2); }
+    if (state.phase >= 2) {
+      ctx.fillStyle = state.phase === 3 ? 'rgba(255,28,36,.25)' : 'rgba(255,145,45,.13)';
+      ctx.fillRect(-boss.r, -boss.r, boss.r * 2, boss.r * 2);
+    }
     ctx.restore();
-    if (state.phase >= 2) drawCracks(ctx, boss.r, state.phase);
+
+    const sprite = state.sprites.boss;
+    const spriteSize = boss.r * (isTouch ? 4.35 : 4.65);
+    if (sprite) {
+      ctx.save();
+      ctx.filter = 'brightness(1.16) contrast(1.06)';
+      if (state.phase === 2) ctx.filter = 'saturate(1.18) brightness(1.14) contrast(1.06)';
+      else if (state.phase === 3) ctx.filter = `saturate(1.5) brightness(${1.14 + Math.sin(now * 0.012) * 0.08}) contrast(1.08)`;
+      ctx.drawImage(sprite, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+      if (boss.flash > 0) {
+        ctx.globalAlpha = clamp(boss.flash * 5, 0, 0.72);
+        ctx.filter = 'brightness(5) grayscale(1)';
+        ctx.drawImage(sprite, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+      }
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 8;
+      for (let i = 0; i < 8; i++) {
+        const angle = i * TAU / 8;
+        ctx.save(); ctx.rotate(angle); ctx.strokeRect(boss.r * 0.72, -10, boss.r * 1.15, 20); ctx.restore();
+      }
+    }
+    if (state.phase >= 2) drawCracks(ctx, boss.r * 0.72, state.phase);
     ctx.restore();
   }
 
@@ -1565,17 +1626,34 @@
     ctx.save();
     ctx.translate(p.x, p.y);
     if (p.invuln > 0 && Math.floor(now / 55) % 2) ctx.globalAlpha = 0.35;
-    ctx.shadowColor = p.color; ctx.shadowBlur = 16;
+    const flame = state.reduced ? 5 : 8 + Math.sin(now * 0.024) * 4;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 16;
     ctx.fillStyle = p.color;
-    if (state.fighter === 'turtle') {
-      ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(21, -7); ctx.lineTo(17, 17); ctx.lineTo(0, 11); ctx.lineTo(-17, 17); ctx.lineTo(-21, -7); ctx.closePath(); ctx.fill();
-    } else if (state.fighter === 'falcon') {
-      ctx.beginPath(); ctx.moveTo(0, -27); ctx.lineTo(29, 15); ctx.lineTo(8, 8); ctx.lineTo(0, 21); ctx.lineTo(-8, 8); ctx.lineTo(-29, 15); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-7, 18);
+    ctx.lineTo(0, 28 + flame);
+    ctx.lineTo(7, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    const sprite = state.sprites[state.fighter] || state.sprites.ray;
+    const size = state.fighter === 'turtle' ? 88 : state.fighter === 'falcon' ? 82 : 78;
+    if (sprite) {
+      ctx.save();
+      if (state.fighter === 'ghost') {
+        ctx.globalAlpha *= 0.72;
+        ctx.filter = 'grayscale(1) hue-rotate(230deg) brightness(1.35)';
+      }
+      ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+      ctx.restore();
     } else {
-      ctx.beginPath(); ctx.moveTo(0, -28); ctx.lineTo(14, 7); ctx.lineTo(23, 15); ctx.lineTo(7, 12); ctx.lineTo(0, 23); ctx.lineTo(-7, 12); ctx.lineTo(-23, 15); ctx.lineTo(-14, 7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.moveTo(0, -28); ctx.lineTo(24, 15); ctx.lineTo(7, 10); ctx.lineTo(0, 24); ctx.lineTo(-7, 10); ctx.lineTo(-24, 15); ctx.closePath();
+      ctx.fill();
     }
-    ctx.shadowBlur = 0; ctx.fillStyle = '#ecfeff'; ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(5, 4); ctx.lineTo(-5, 4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.moveTo(-7, 15); ctx.lineTo(0, 29 + Math.sin(now * 0.02) * 4); ctx.lineTo(7, 15); ctx.closePath(); ctx.fill();
     if (p.shield > 0) { ctx.strokeStyle = hexAlpha('#75efff', 0.32 + p.shield / p.shieldMax * 0.45); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 29, 0, TAU); ctx.stroke(); }
     ctx.restore();
   }
@@ -1718,30 +1796,47 @@
   function taunt(category) {
     const list = LINES[category];
     if (!list?.length) return;
+    const forced = ['entrance', 'phase2', 'phase3', 'victory', 'defeat'].includes(category);
+    if (!forced && state.elapsed - state.lastTauntAt < 4.5) return;
+    state.lastTauntAt = state.elapsed;
     if (!state.bags[category]?.length) state.bags[category] = shuffle(list.map((_, index) => index));
     const line = list[state.bags[category].pop()];
     sayLine(line);
   }
 
   function sayLine(line) {
-    toast(line);
-    if (!audio.muted && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const speech = new SpeechSynthesisUtterance(line);
-      speech.lang = 'zh-CN';
-      speech.rate = state.phase === 3 ? 1.15 : 1.04;
-      speech.pitch = 0.72;
-      speech.volume = 0.72;
-      window.speechSynthesis.speak(speech);
-    }
+    radioToast(line);
+    audio.radio(line);
   }
 
   let toastTimer = 0;
+  let toastTypeTimer = 0;
+  function radioToast(message) {
+    const target = dom.tauntToast || dom.creatorStatus;
+    if (!target) return;
+    const prefix = `[${state.config.name} // 公共频道] `;
+    const glyphs = Array.from(message);
+    let shown = 0;
+    target.textContent = prefix;
+    target.hidden = false;
+    target.classList.add('show', 'active', 'radio');
+    clearInterval(toastTypeTimer);
+    clearTimeout(toastTimer);
+    toastTypeTimer = setInterval(() => {
+      shown = Math.min(glyphs.length, shown + 2);
+      target.textContent = prefix + glyphs.slice(0, shown).join('');
+      if (shown >= glyphs.length) clearInterval(toastTypeTimer);
+    }, state.phase === 3 ? 48 : 62);
+    toastTimer = setTimeout(() => target.classList.remove('show', 'active', 'radio'), 2800);
+  }
+
   function toast(message) {
     const target = dom.tauntToast || dom.creatorStatus;
     if (!target) return;
+    clearInterval(toastTypeTimer);
     target.textContent = message;
     target.hidden = false;
+    target.classList.remove('radio');
     target.classList.add('show', 'active');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => target.classList.remove('show', 'active'), 2600);

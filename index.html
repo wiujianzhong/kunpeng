@@ -69,12 +69,13 @@
             <p><strong>友情风险提示</strong>头像越熟，击败时越解压。</p>
           </div>
           <div class="mobile-hero-actions" aria-label="手机快速操作">
-            <button id="mobileUploadButton" class="button button--secondary" type="button">植入头像</button>
+            <label id="mobileUploadButton" class="button button--secondary" for="avatarInput" role="button" tabindex="0">植入头像</label>
             <button id="mobileQuickPlayButton" class="button button--primary" type="button">快速开战 →</button>
+            <span id="mobileUploadStatus" role="status" aria-live="polite">选照片后会立即显示进度</span>
           </div>
         </div>
 
-        <div class="boss-bay" role="button" tabindex="0" aria-label="点击植入好友头像">
+        <label class="boss-bay" for="avatarInput" role="button" tabindex="0" aria-label="点击植入好友头像">
           <span class="bay-label bay-label--top">CORE BAY / AVATAR FEED</span>
           <div class="bay-bracket bay-bracket--left" aria-hidden="true"></div>
           <div class="bay-bracket bay-bracket--right" aria-hidden="true"></div>
@@ -100,7 +101,7 @@
             <span class="boss-chassis"></span>
           </div>
           <p class="bay-caption"><span>能量核心</span> 点击核心植入头像</p>
-        </div>
+        </label>
 
         <form class="creator-panel" autocomplete="off" onsubmit="return false">
           <div class="panel-heading">
@@ -123,9 +124,9 @@
           <div class="avatar-upload-row">
             <label class="upload-button" for="avatarInput">
               <span class="upload-button__plus" aria-hidden="true">＋</span>
-              <span><strong>植入好友头像</strong><small>支持 JPG、PNG、WebP</small></span>
+              <span><strong>植入好友头像</strong><small>支持 iPhone 照片、JPG、PNG、WebP</small></span>
             </label>
-            <input id="avatarInput" class="visually-hidden" name="avatar" type="file" accept="image/jpeg,image/png,image/webp">
+            <input id="avatarInput" class="visually-hidden" name="avatar" type="file" accept="image/*">
             <span class="upload-state" aria-hidden="true">CORE<br>EMPTY</span>
           </div>
 
@@ -172,21 +173,21 @@
         <div id="fighterGrid" class="fighter-grid" role="radiogroup" aria-label="选择战机">
           <button class="fighter-card is-selected" type="button" data-fighter="ray" role="radio" aria-checked="true">
             <span class="fighter-card__number">F-01</span>
-            <span class="fighter-figure fighter-figure--ray" aria-hidden="true"><i></i></span>
+            <span class="fighter-figure fighter-figure--ray" aria-hidden="true"><img src="assets/boss-rush/sprites/ray.png" alt=""><i></i></span>
             <span class="fighter-card__info"><strong>电鳐</strong><small>高速突袭机</small></span>
             <span class="fighter-stats"><i><b>机动</b><em style="--level: 88%"></em></i><i><b>火力</b><em style="--level: 68%"></em></i><i><b>装甲</b><em style="--level: 44%"></em></i></span>
             <span class="fighter-skill">被动 · 连击充能</span>
           </button>
           <button class="fighter-card" type="button" data-fighter="falcon" role="radio" aria-checked="false">
             <span class="fighter-card__number">F-02</span>
-            <span class="fighter-figure fighter-figure--falcon" aria-hidden="true"><i></i></span>
+            <span class="fighter-figure fighter-figure--falcon" aria-hidden="true"><img src="assets/boss-rush/sprites/falcon.png" alt=""><i></i></span>
             <span class="fighter-card__info"><strong>猎隼</strong><small>重火力截击机</small></span>
             <span class="fighter-stats"><i><b>机动</b><em style="--level: 66%"></em></i><i><b>火力</b><em style="--level: 92%"></em></i><i><b>装甲</b><em style="--level: 52%"></em></i></span>
             <span class="fighter-skill">被动 · 穿甲弹舱</span>
           </button>
           <button class="fighter-card" type="button" data-fighter="turtle" role="radio" aria-checked="false">
             <span class="fighter-card__number">F-03</span>
-            <span class="fighter-figure fighter-figure--turtle" aria-hidden="true"><i></i></span>
+            <span class="fighter-figure fighter-figure--turtle" aria-hidden="true"><img src="assets/boss-rush/sprites/turtle.png" alt=""><i></i></span>
             <span class="fighter-card__info"><strong>玄甲</strong><small>护盾轰炸机</small></span>
             <span class="fighter-stats"><i><b>机动</b><em style="--level: 42%"></em></i><i><b>火力</b><em style="--level: 72%"></em></i><i><b>装甲</b><em style="--level: 96%"></em></i></span>
             <span class="fighter-skill">被动 · 受击回盾</span>
@@ -194,7 +195,7 @@
           <button class="fighter-card is-locked" type="button" data-fighter="ghost" role="radio" aria-checked="false" aria-disabled="true" disabled>
             <span class="fighter-card__number">F-04</span>
             <span class="fighter-lock" data-lock-label>经典指令解锁</span>
-            <span class="fighter-figure fighter-figure--ghost" aria-hidden="true"><i></i></span>
+            <span class="fighter-figure fighter-figure--ghost" aria-hidden="true"><img src="assets/boss-rush/sprites/ray.png" alt=""><i></i></span>
             <span class="fighter-card__info"><strong>幽灵</strong><small>试验型隐身机</small></span>
             <span class="fighter-stats"><i><b>机动</b><em style="--level: 100%"></em></i><i><b>火力</b><em style="--level: 84%"></em></i><i><b>装甲</b><em style="--level: 38%"></em></i></span>
             <span class="fighter-skill">机密数据已封锁</span>
