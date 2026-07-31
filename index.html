@@ -1,2028 +1,294 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover,shrink-to-fit=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#000000">
-<meta name="format-detection" content="telephone=no">
-<meta name="x5-fullscreen" content="true">
-<meta name="x5-page-mode" content="app">
-<meta name="full-screen" content="yes">
-<meta name="browsermode" content="application">
-<title>击败你的朋友们 - Boss Rush v2</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  width:100%;height:100%;overflow:hidden;background:#000;
-  touch-action:none;-webkit-touch-callout:none;
-  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
-  -webkit-overflow-scrolling:none;overscroll-behavior:none;
-}
-#game{
-  display:block;position:fixed;top:0;left:0;right:0;bottom:0;
-  width:100vw;height:100dvh;height:100vh;
-}
-#ui{
-  position:fixed;bottom:max(20px,env(safe-area-inset-bottom,20px));left:50%;
-  transform:translateX(-50%);display:flex;gap:12px;align-items:center;z-index:10;
-  pointer-events:none;
-}
-#ui>*{pointer-events:auto}
-#start-btn{
-  background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;border:none;padding:14px 42px;
-  font-size:20px;font-weight:bold;border-radius:50px;cursor:pointer;letter-spacing:3px;
-  box-shadow:0 0 30px rgba(255,107,107,.5),0 4px 15px rgba(0,0,0,.4);transition:all .2s;
-  font-family:"PingFang SC","Microsoft YaHei",sans-serif;position:relative;overflow:hidden;
-}
-#start-btn:active{transform:scale(.95);box-shadow:0 0 50px rgba(255,107,107,.8)}
-#start-btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:rgba(255,255,255,.3);transform:translate(-50%,-50%);transition:all .4s}
-#start-btn:active::after{width:300px;height:300px}
-#bomb-btn{
-  background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;border:none;width:56px;height:56px;
-  font-size:24px;border-radius:50%;cursor:pointer;box-shadow:0 0 20px rgba(230,126,34,.5);
-  display:none;transition:all .2s
-}
-#bomb-btn:active{transform:scale(.9);box-shadow:0 0 35px rgba(230,126,34,.8)}
-#exit-btn{
-  background:rgba(0,0,0,.7);color:#fff;border:1px solid rgba(255,255,255,.25);
-  padding:8px 18px;font-size:13px;border-radius:25px;cursor:pointer;
-  font-family:"PingFang SC","Microsoft YaHei",sans-serif;display:none;
-  transition:all .2s;
-}
-#exit-btn:active{background:rgba(255,0,0,.5);border-color:#ff4444;transform:scale(.95)}
-#mobile-hint{color:rgba(255,255,255,.5);font-size:13px;font-family:"PingFang SC","Microsoft YaHei",sans-serif;display:none}
-#crt-overlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);
-}
-#crt-overlay::after{
-  content:'';position:fixed;top:0;left:0;width:100%;height:100%;
-  background:radial-gradient(ellipse at center,rgba(0,0,0,0) 60%,rgba(0,0,0,.3) 100%);
-  pointer-events:none;
-}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090B10">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="把好友改装成机械 Boss，驾驶战机冲进通缉战场。">
+  <meta property="og:title" content="好友通缉令｜Boss Rush">
+  <meta property="og:description" content="上传好友头像，组装专属机械 Boss，然后亲手击败他。">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:url" content="https://wiujianzhong.github.io/kunpeng/">
+  <meta property="og:image" content="https://wiujianzhong.github.io/kunpeng/assets/boss-rush/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://wiujianzhong.github.io/kunpeng/assets/boss-rush/og.jpg">
+  <title>好友通缉令｜Boss Rush</title>
+  <link rel="stylesheet" href="boss-rush.css">
+  <script src="boss-rush.js" defer></script>
 </head>
 <body>
-<canvas id="game"></canvas>
-<div id="ui">
-  <button id="start-btn">挑战朋友</button>
-  <button id="bomb-btn">💣</button>
-  <button id="exit-btn">✕ 退出</button>
-  <div id="mobile-hint">📱 滑动屏幕操控飞机</div>
-</div>
-<div id="crt-overlay"></div>
-<script>
-// ==================== AUDIO ENGINE (iOS FIXED) ====================
-let audioCtx=null,audioUnlocked=false;
-function initAudio(){
-  if(audioCtx)return;
-  try{
-    const AC=window.AudioContext||window.webkitAudioContext;
-    if(!AC)return;
-    audioCtx=new AC();
-    if(audioCtx.state==='suspended')audioCtx.resume();
-  }catch(e){audioCtx=null}
-}
-function forceAudio(){
-  if(!audioCtx){initAudio();return}
-  if(audioCtx.state==='suspended'){
-    audioCtx.resume().then(()=>{audioUnlocked=true}).catch(()=>{});
-  }else if(audioCtx.state==='running'){
-    audioUnlocked=true;
-  }
-}
-// iOS requires synchronous AudioContext creation inside user gesture
-function unlockAudio(){
-  if(audioUnlocked)return;
-  if(!audioCtx)initAudio();
-  if(!audioCtx)return;
-  // Play silent buffer to fully unlock iOS audio
-  try{
-    const buf=audioCtx.createBuffer(1,1,22050);
-    const src=audioCtx.createBufferSource();
-    src.buffer=buf;src.connect(audioCtx.destination);
-    src.start(0);src.stop(audioCtx.currentTime+.001);
-    audioUnlocked=true;
-  }catch(e){}
-  if(audioCtx.state==='suspended'){
-    audioCtx.resume().then(()=>{audioUnlocked=true}).catch(()=>{});
-  }
-}
-function playBeep(freq,type,dur,vol=.1,slide=0){
-  if(!audioCtx)return;
-  const t=audioCtx.currentTime;
-  const o=audioCtx.createOscillator();
-  const g=audioCtx.createGain();
-  o.type=type;o.frequency.setValueAtTime(freq,t);
-  if(slide)o.frequency.linearRampToValueAtTime(freq+slide,t+dur);
-  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  o.connect(g);g.connect(audioCtx.destination);
-  o.start(t);o.stop(t+dur);
-}
-function sfxShoot(){playBeep(1000,'square',.04,.025);playBeep(600,'triangle',.03,.02)}
-function sfxHit(){playBeep(250,'sawtooth',.12,.06,-120);playBeep(100,'square',.08,.05)}
-function sfxExplosion(){playBeep(60,'sawtooth',.4,.12,-30);playBeep(35,'square',.5,.18,-20);playBeep(90,'triangle',.25,.1,-50)}
-function sfxPowerUp(){playBeep(700,'square',.06,.05);setTimeout(()=>playBeep(1000,'square',.06,.05),60);setTimeout(()=>playBeep(1300,'triangle',.05,.04),120)}
-function sfxBossHit(){playBeep(150,'sawtooth',.25,.12,-80);playBeep(40,'triangle',.35,.1);playBeep(60,'square',.2,.08,-30)}
-function sfxBossIntro(){
-  playBeep(180,'triangle',.5,.18,150);playBeep(100,'sawtooth',.4,.15,-50);
-  setTimeout(()=>{playBeep(350,'triangle',.35,.12,200);playBeep(200,'sawtooth',.3,.1,-80)},180);
-  setTimeout(()=>{playBeep(550,'triangle',.3,.1,300);playBeep(300,'square',.25,.08,-100)},360);
-  setTimeout(()=>{playBeep(800,'triangle',.25,.08,400);playBeep(400,'square',.2,.06,-150)},540);
-}
-function sfxBossHeartbeat(){playBeep(30,'sine',.15,.35,-10);setTimeout(()=>playBeep(25,'sine',.1,.3,-5),350)}
-function sfxGameOver(){playBeep(500,'triangle',.2,.4,-350);setTimeout(()=>playBeep(250,'triangle',.25,.35,-200),350);setTimeout(()=>playBeep(120,'sawtooth',.4,.6,-80),700)}
-function sfxVictory(){[0,120,240,360,480,600,720,840].forEach((d,i)=>setTimeout(()=>playBeep(300+i*100,'triangle',.15,.1,150),d))}
-let _comboIdx=0;
-function sfxCombo(){_comboIdx++;playBeep(500+_comboIdx*30,'square',.04,.025,200)}
-function sfxBomb(){playBeep(35,'sawtooth',.6,.25,-15);playBeep(25,'square',.7,.3);playBeep(50,'sawtooth',.4,.2,-25)}
-
-// ==================== BROWSER COMPATIBILITY ====================
-// Polyfill for ctx.ellipse() - missing in older WebViews (UC, old WeChat, etc.)
-if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.ellipse){
-  CanvasRenderingContext2D.prototype.ellipse=function(x,y,rx,ry,rot,sa,ea,ccw){
-    this.save();this.translate(x,y);this.rotate(rot);this.scale(rx,ry);
-    this.arc(0,0,1,sa,ea,ccw);this.restore();
-  };
-}
-
-// ==================== CANVAS SETUP ====================
-const canvas=document.getElementById('game');
-const ctx=canvas.getContext('2d');
-const W=480,H=800;
-let scale=1,offsetX=0,offsetY=0;
-
-function getViewportSize(){
-  // visualViewport handles iOS Safari toolbar correctly
-  const vv=window.visualViewport;
-  if(vv)return{w:Math.floor(vv.width),h:Math.floor(vv.height)};
-  return{w:window.innerWidth||document.documentElement.clientWidth||360,h:window.innerHeight||document.documentElement.clientHeight||640};
-}
-
-function resize(){
-  const vp=getViewportSize();
-  const maxW=vp.w,maxH=vp.h;
-  scale=Math.min(maxW/W,maxH/H);
-  canvas.width=maxW;canvas.height=maxH;
-  canvas.style.width=maxW+'px';canvas.style.height=maxH+'px';
-  offsetX=(maxW-W*scale)/2;offsetY=(maxH-H*scale)/2;
-}
-window.addEventListener('resize',resize);
-window.addEventListener('orientationchange',()=>{
-  setTimeout(resize,200);setTimeout(resize,500);setTimeout(resize,1000);
-});
-if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',resize);
-  window.visualViewport.addEventListener('scroll',()=>{if(Math.abs(window.visualViewport.offsetTop)>0)resize()});
-}
-// 阻止全局滚动和缩放
-document.addEventListener('touchmove',e=>{e.preventDefault()},{passive:false});
-document.addEventListener('gesturestart',e=>{e.preventDefault()});
-document.addEventListener('gesturechange',e=>{e.preventDefault()});
-document.addEventListener('gestureend',e=>{e.preventDefault()});
-document.addEventListener('dblclick',e=>{e.preventDefault()},{passive:false});
-// Hide iOS Safari URL bar on load
-window.addEventListener('load',()=>{
-  setTimeout(()=>{window.scrollTo(0,0);resize()},100);
-  setTimeout(()=>{window.scrollTo(0,0);resize()},300);
-  setTimeout(()=>{window.scrollTo(0,0);resize()},600);
-});
-resize();
-
-// ==================== GAME STATE ====================
-const STATE={LOADING:0,MENU:1,DIFF_SELECT:7,PLAYING:2,BOSS_INTRO:3,LEVEL_COMPLETE:4,GAME_OVER:5,VICTORY:6};
-let state=STATE.MENU;
-let difficulty='rookie';// rookie|veteran|elite
-let score=0,lives=5,level=0,bombs=3;
-let stateTimer=0,bossIntroTimer=0,levelCompleteTimer=0;
-let shakeAmount=0,shakeDuration=0;
-let frameCount=0;
-let bombFlash=0;
-
-const bossNames=['李亚增','李彦祥','李飞','杨小军','王小涛','伍建忠'];
-const bossColors={
-  '李亚增':{body:'#c0392b',accent:'#e74c3c',glow:'#f39c12',face:'#2c3e50'},
-  '李彦祥':{body:'#2471a3',accent:'#5dade2',glow:'#85c1e9',face:'#1a5276'},
-  '李飞':{body:'#6c3483',accent:'#bb8fce',glow:'#d7bde2',face:'#4a235a'},
-  '杨小军':{body:'#1e8449',accent:'#2ecc71',glow:'#58d68d',face:'#145a32'},
-  '王小涛':{body:'#b7950b',accent:'#f1c40f',glow:'#f9e79f',face:'#7d6608'},
-  '伍建忠':{body:'#6e2c00',accent:'#e67e22',glow:'#f0b27a',face:'#3e1700'},
-  '陈大鹏':{body:'#1b4f72',accent:'#3498db',glow:'#85c1e9',face:'#0d3b56'},
-  '赵铁柱':{body:'#641e16',accent:'#cb4335',glow:'#f1948a',face:'#3e100c'}
-};
-
-// ==================== INPUT ====================
-const keys={};
-let touchActive=false,touchX=0,touchY=0;
-let playerTouchOffsetX=0,playerTouchOffsetY=0;
-
-function getGamePos(clientX,clientY){
-  const r=canvas.getBoundingClientRect();
-  return {
-    x:(clientX-r.left-offsetX)/scale,
-    y:(clientY-r.top-offsetY)/scale
-  };
-}
-
-function enterFullscreen(){
-  window.scrollTo(0,0);
-  // 尝试进入浏览器全屏
-  const d=document.documentElement;
-  const fn=d.requestFullscreen||d.webkitRequestFullscreen||d.msRequestFullscreen;
-  if(fn){try{fn.call(d)}catch(e){}}
-}
-
-window.addEventListener('keydown',e=>{keys[e.key]=true;e.preventDefault()});
-window.addEventListener('keyup',e=>{keys[e.key]=false});
-
-canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();unlockAudio();enterFullscreen();
-  const gp=getGamePos(e.touches[0].clientX,e.touches[0].clientY);
-  if(state===STATE.MENU){startGame()}
-  else if(state===STATE.GAME_OVER||state===STATE.VICTORY){resetGame()}
-  else if(state===STATE.DIFF_SELECT){handleDiffTap(gp.x,gp.y)}
-  else{touchActive=true;touchX=gp.x;touchY=gp.y;playerTouchOffsetX=player.x-gp.x;playerTouchOffsetY=player.y-gp.y}
-},{passive:false});
-canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  if(!touchActive)return;
-  const gp=getGamePos(e.touches[0].clientX,e.touches[0].clientY);
-  touchX=gp.x;touchY=gp.y;
-},{passive:false});
-canvas.addEventListener('touchend',e=>{e.preventDefault();touchActive=false},{passive:false});
-canvas.addEventListener('click',e=>{
-  unlockAudio();enterFullscreen();
-  const gp=getGamePos(e.clientX,e.clientY);
-  if(state===STATE.MENU){startGame()}
-  else if(state===STATE.GAME_OVER||state===STATE.VICTORY){resetGame()}
-  else if(state===STATE.DIFF_SELECT){handleDiffTap(gp.x,gp.y)}
-});
-// HTML按钮也需要处理游戏逻辑
-document.getElementById('start-btn').addEventListener('click',()=>{
-  unlockAudio();enterFullscreen();
-  if(state===STATE.MENU)startGame();
-  else if(state===STATE.GAME_OVER||state===STATE.VICTORY)resetGame();
-});
-document.getElementById('start-btn').addEventListener('touchstart',e=>{
-  e.preventDefault();e.stopPropagation();
-  unlockAudio();enterFullscreen();
-  if(state===STATE.MENU)startGame();
-  else if(state===STATE.GAME_OVER||state===STATE.VICTORY)resetGame();
-},{passive:false});
-document.getElementById('bomb-btn').addEventListener('click',()=>{
-  unlockAudio();enterFullscreen();
-  if(state===STATE.PLAYING)useBomb();
-});
-document.getElementById('bomb-btn').addEventListener('touchstart',e=>{
-  e.preventDefault();e.stopPropagation();
-  unlockAudio();enterFullscreen();
-  if(state===STATE.PLAYING)useBomb();
-},{passive:false});
-// Exit button — return to menu
-function exitToMenu(){
-  state=STATE.MENU;boss=null;enemies.length=0;bullets.length=0;
-  powerUps.length=0;particles.length=0;particleIndex=0;
-  rageMode=false;rageTimer=0;comboCount=0;comboDisplay=0;
-  player=new Player();
-}
-document.getElementById('exit-btn').addEventListener('click',()=>{exitToMenu()});
-document.getElementById('exit-btn').addEventListener('touchstart',e=>{
-  e.preventDefault();e.stopPropagation();exitToMenu();
-},{passive:false});
-// 阻止长按菜单
-document.addEventListener('contextmenu',e=>{e.preventDefault()});
-
-function handleDiffTap(x,y){
-  if(x>W/2-110&&x<W/2+110){
-    if(y>H/2+10&&y<H/2+55){difficulty='rookie';resetGame()}
-    else if(y>H/2+65&&y<H/2+110){difficulty='veteran';resetGame()}
-    else if(y>H/2+120&&y<H/2+165){difficulty='elite';resetGame()}
-  }
-}
-
-// ==================== PARTICLE SYSTEM ====================
-const MAX_PARTICLES=160;
-const particles=[];
-let particleIndex=0;
-
-class Particle{
-  constructor(){this.reset()}
-  reset(){this.x=0;this.y=0;this.vx=0;this.vy=0;this.life=0;this.maxLife=0;this.color='#fff';this.size=2;this.type='dot';this.gravity=0;this.friction=1}
-  init(x,y,vx,vy,color,life,size,type,gravity,friction){
-    this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.color=color;this.life=life;this.maxLife=life;
-    this.size=size||2;this.type=type||'dot';this.gravity=gravity||0;this.friction=friction||1;
-    return this;
-  }
-  update(){
-    this.vx*=this.friction;this.vy*=this.friction;this.vy+=this.gravity;
-    this.x+=this.vx;this.y+=this.vy;this.life--;
-  }
-  draw(ctx){
-    const a=this.life/this.maxLife;
-    ctx.globalAlpha=a;
-    if(this.type==='glow'){
-      const r=this.size*(1+a*.5);
-      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,r);
-      g.addColorStop(0,this.color);g.addColorStop(1,'transparent');
-      ctx.fillStyle=g;ctx.beginPath();ctx.arc(this.x,this.y,r,0,Math.PI*2);ctx.fill();
-    }else if(this.type==='trail'){
-      ctx.fillStyle=this.color;ctx.fillRect(this.x-this.size/2,this.y-this.size/2,this.size,this.size);
-    }else if(this.type==='spark'){
-      ctx.strokeStyle=this.color;ctx.lineWidth=this.size*a;ctx.globalAlpha=a;
-      ctx.beginPath();ctx.moveTo(this.x,this.y);ctx.lineTo(this.x-this.vx*2,this.y-this.vy*2);ctx.stroke();
-    }else{
-      ctx.fillStyle=this.color;ctx.fillRect(this.x-this.size/2,this.y-this.size/2,this.size*a,this.size*a);
-    }
-    ctx.globalAlpha=1;
-  }
-}
-
-function spawnParticle(x,y,vx,vy,color,life,size,type,gravity,friction){
-  let p;
-  if(particles.length<MAX_PARTICLES){
-    p=new Particle();
-    particles.push(p);
-  }else{
-    p=particles[particleIndex%MAX_PARTICLES];
-  }
-  particleIndex++;
-  return p.init(x,y,vx,vy,color,life,size||2,type||'dot',gravity||0,friction==null?1:friction);
-}
-
-function spawnExplosion(x,y,count,color){
-  const colors=color?[color,color,color]:['#ff6b6b','#ffd93d','#ff8e53','#ff3838','#fff','#ffaa00'];
-  // Fireball core
-  for(let i=0;i<Math.floor(count*.3);i++){
-    const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
-    spawnParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,colors[0],8+Math.random()*10,4+Math.random()*6,'glow',0,.96);
-  }
-  // Debris
-  for(let i=0;i<Math.floor(count*.4);i++){
-    const a=Math.random()*Math.PI*2,s=2+Math.random()*6;
-    spawnParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,colors[Math.floor(Math.random()*colors.length)],12+Math.random()*18,2+Math.random()*3,'spark',.02,.98);
-  }
-  // Smoke
-  for(let i=0;i<Math.floor(count*.3);i++){
-    const a=Math.random()*Math.PI*2,s=.5+Math.random()*2;
-    spawnParticle(x,y,Math.cos(a)*s,Math.sin(a)*s-.5,'#888',15+Math.random()*25,3+Math.random()*5,'trail',-.01,.99);
-  }
-}
-
-function spawnHitSpark(x,y,color){
-  for(let i=0;i<4;i++){
-    const a=Math.random()*Math.PI*2,s=2+Math.random()*4;
-    spawnParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,color||'#fff',6+Math.random()*8,1.5,'spark',0,.95);
-  }
-}
-
-function spawnBulletTrail(x,y,color){
-  spawnParticle(x,y,(Math.random()-.5)*.5,(Math.random()-.5)*.5,color,4+Math.random()*6,1+Math.random()*2,'glow',0,.9);
-}
-
-function spawnEngineParticle(x,y){
-  spawnParticle(x+Math.random()*6-3,y,Math.random()*.5-.25,1+Math.random()*2,'#ff6b35',8+Math.random()*8,2+Math.random()*3,'glow',.01,.97);
-  if(Math.random()<.3)spawnParticle(x+Math.random()*4-2,y,(Math.random()-.5)*.3,1.5+Math.random()*2,'#ffaa00',6+Math.random()*6,1.5+Math.random()*2,'trail',.01,.96);
-}
-
-// ==================== BACKGROUND SYSTEM ====================
-const bgStars=[],bgNebula=[],bgFlow=[];
-// Space background images from Pexels
-const bgImages=[];
-const bgImagePaths=['assets/bg-space-purple.jpg','assets/bg-nebula-blue.jpg','assets/bg-galaxy-swirl.jpg'];
-let bgImagesLoaded=false;
-function preloadBackgroundImages(){
-  let loaded=0;
-  bgImagePaths.forEach((path,i)=>{
-    const img=new Image();
-    img.onload=()=>{loaded++;if(loaded>=bgImagePaths.length)bgImagesLoaded=true};
-    img.onerror=()=>{loaded++;if(loaded>=bgImagePaths.length)bgImagesLoaded=true};
-    img.src=path;
-    bgImages.push(img);
-  });
-}
-// Boss images - cool boss sprites
-const bossImgs=[];
-const bossImgPaths=['assets/boss1.jpg','assets/boss2.jpg','assets/boss3.jpg','assets/boss4.jpg','assets/boss5.jpg','assets/boss6.jpg','assets/boss1.jpg','assets/boss2.jpg'];
-let bossImgsLoaded=false;
-function preloadBossImages(){
-  let loaded=0;
-  bossImgPaths.forEach((path,i)=>{
-    const img=new Image();
-    img.onload=()=>{loaded++;if(loaded>=bossImgPaths.length)bossImgsLoaded=true};
-    img.onerror=()=>{loaded++;if(loaded>=bossImgPaths.length)bossImgsLoaded=true};
-    img.src=path;
-    bossImgs.push(img);
-  });
-}
-
-function initBackground(){
-  bgStars.length=0;bgNebula.length=0;bgFlow.length=0;
-  // Layer 1: distant stars (twinkling)
-  for(let i=0;i<120;i++){
-    bgStars.push({x:Math.random()*W,y:Math.random()*H,size:.3+Math.random()*1.8,brightness:.3+Math.random()*.7,twinkle:Math.random()*Math.PI*2,twinkleSpd:.01+Math.random()*.03});
-  }
-  // Layer 2: nebula blobs
-  for(let i=0;i<8;i++){
-    bgNebula.push({x:Math.random()*W,y:Math.random()*H,r:60+Math.random()*120,color:['rgba(30,60,120,.06)','rgba(60,20,80,.05)','rgba(20,60,100,.04)'][Math.floor(Math.random()*3)],vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.15});
-  }
-  // Layer 3: flow particles
-  for(let i=0;i<40;i++){
-    bgFlow.push({x:Math.random()*W,y:Math.random()*H,speed:.3+Math.random()*1.2,size:.5+Math.random()*1,alpha:.1+Math.random()*.3,len:15+Math.random()*30});
-  }
-}
-
-function drawBackground(ctx){
-  // Base: draw space image if loaded, otherwise gradient
-  const bgIdx=level%bgImages.length;
-  if(bgImagesLoaded&&bgImages[bgIdx]&&bgImages[bgIdx].complete){
-	ctx.globalAlpha=boss&&boss.hp<boss.maxHp*.3?0.4:0.55;
-	ctx.drawImage(bgImages[bgIdx],0,0,W,H);
-	ctx.globalAlpha=1;
-  }else{
-	const bgG=ctx.createLinearGradient(0,0,0,H);
-	bgG.addColorStop(0,'#050510');bgG.addColorStop(.5,'#0a0a20');bgG.addColorStop(1,'#0d0d2a');
-	ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
-  }
-  // Dark overlay for gameplay readability
-  if(state===STATE.PLAYING||state===STATE.BOSS_INTRO){
-	ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,0,W,H);
-  }
-
-  const spd=(state===STATE.PLAYING||state===STATE.BOSS_INTRO)?1:.5;
-  const bossNearDeath=boss&&boss.hp<boss.maxHp*.3;
-
-  // Nebula blobs
-  ctx.globalCompositeOperation='lighter';
-  bgNebula.forEach(n=>{
-    n.x+=n.vx*spd*.3;n.y+=n.vy*spd*.3;
-    if(n.x<-n.r)n.x=W+n.r;if(n.x>W+n.r)n.x=-n.r;
-    if(n.y<-n.r)n.y=H+n.r;if(n.y>H+n.r)n.y=-n.r;
-    const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
-    const c=bossNearDeath?'rgba(80,10,10,.08)':n.color;
-    g.addColorStop(0,c);g.addColorStop(1,'transparent');
-    ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fill();
-  });
-  ctx.globalCompositeOperation='source-over';
-
-  // Twinkling stars
-  bgStars.forEach(s=>{
-    s.twinkle+=s.twinkleSpd;
-    const b=s.brightness*(.6+.4*Math.sin(s.twinkle));
-    s.y+=s.size*spd*.6;if(s.y>H){s.y=0;s.x=Math.random()*W}
-    ctx.fillStyle=`rgba(200,220,255,${b})`;
-    ctx.beginPath();ctx.arc(s.x,s.y,s.size*.7,0,Math.PI*2);ctx.fill();
-    // Bright stars get cross glow
-    if(s.size>1.2&&b>.7){
-      ctx.fillStyle=`rgba(200,220,255,${b*.3})`;
-      ctx.fillRect(s.x-s.size*2,s.y-.3,s.size*4,.6);
-      ctx.fillRect(s.x-.3,s.y-s.size*2,.6,s.size*4);
-    }
-  });
-
-  // Flow lines
-  ctx.globalCompositeOperation='lighter';
-  bgFlow.forEach(f=>{
-    f.y+=f.speed*spd;if(f.y>H+f.len){f.y=-f.len;f.x=Math.random()*W}
-    const g=ctx.createLinearGradient(f.x,f.y,f.x,f.y+f.len);
-    g.addColorStop(0,`rgba(100,150,255,${f.alpha})`);g.addColorStop(1,'transparent');
-    ctx.strokeStyle=g;ctx.lineWidth=f.size;
-    ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(f.x,f.y+f.len);ctx.stroke();
-  });
-  ctx.globalCompositeOperation='source-over';
-}
-
-// ==================== COMBO SYSTEM ====================
-let comboCount=0,comboTimer=0,comboDisplay=0,comboFlash=0;
-let rageMode=false,rageTimer=0;
-let lastShockwave=0;
-
-function addCombo(){
-  comboCount++;comboTimer=90;
-  if(comboCount>=(difficulty==='rookie'?12:difficulty==='veteran'?25:35)&&!rageMode){rageMode=true;rageTimer=difficulty==='rookie'?500:difficulty==='veteran'?350:250}
-  if(comboCount>=(difficulty==='rookie'?25:50)&&frameCount-lastShockwave>3600){
-    lastShockwave=frameCount;
-    // Auto shockwave
-    enemies.forEach(e=>{e.hp=0;score+=e.score;spawnExplosion(e.x,e.y,12)});
-    enemies.length=0;
-    bullets=bullets.filter(b=>b.isPlayer);
-    shakeAmount=8;
-    sfxExplosion();
-  }
-  if(comboCount%10===0)sfxCombo();
-  comboFlash=15;
-  // "+N" popup particles
-  for(let i=0;i<3;i++){
-    spawnParticle(player.x+Math.random()*20-10,player.y-30,Math.random()*1-.5,-1-Math.random()*2,'#ffd93d',20+Math.random()*10,2,'trail',-.01,.98);
-  }
-}
-
-function updateCombo(){
-  if(comboTimer>0){comboTimer--;if(comboTimer<=0){comboCount=0;rageMode=false}}
-  if(comboDisplay<comboCount){comboDisplay=Math.min(comboCount,comboDisplay+Math.max(1,Math.floor((comboCount-comboDisplay)*.3)))}
-  if(comboDisplay>comboCount)comboDisplay=comboCount;
-  if(comboFlash>0)comboFlash--;
-  if(rageMode){rageTimer--;if(rageTimer<=0)rageMode=false}
-}
-
-// ==================== SCREEN SHAKE ====================
-function addShake(amount,duration){
-  shakeAmount=Math.max(shakeAmount,amount);
-  shakeDuration=Math.max(shakeDuration,duration||0);
-}
-
-function updateShake(){
-  if(shakeAmount>0){shakeAmount*=.85;if(shakeAmount<.3)shakeAmount=0}
-  if(shakeDuration>0)shakeDuration--;
-}
-
-// ==================== SCORE POPUPS ====================
-const scorePopups=[];
-function addScorePopup(x,y,pts){
-  scorePopups.push({x:x,y:y,pts:pts,life:40,vy:-2});
-}
-
-// ==================== GAME OBJECTS ====================
-let player,enemies,bullets,powerUps,boss,stars;
-let waveEnemies=[],wavesCleared=0,wavesPerLevel=6;
-
-class Player{
-  constructor(){
-    this.w=36;this.h=48;this.x=W/2;this.y=H-100;this.speed=6;
-    this.power=1;this.shield=false;this.invincible=0;this.shootCD=0;
-    this.engineFlame=0;this.shieldAngle=0;
-    this.trailPositions=[];this.trailTimer=0;
-  }
-  update(){
-    this.shieldAngle+=.04;
-    // Movement input
-    let mx=0,my=0;
-    if(touchActive){
-      const tx=touchX+playerTouchOffsetX,ty=touchY+playerTouchOffsetY;
-      mx=(tx-this.x)*.3;my=(ty-this.y)*.3;
-    }
-    if(keys['ArrowLeft']||keys['a']||keys['A'])mx=-this.speed;
-    if(keys['ArrowRight']||keys['d']||keys['D'])mx=this.speed;
-    if(keys['ArrowUp']||keys['w']||keys['W'])my=-this.speed;
-    if(keys['ArrowDown']||keys['s']||keys['S'])my=this.speed;
-    this.x+=mx;this.y+=my;
-    this.x=Math.max(this.w/2,Math.min(W-this.w/2,this.x));
-    this.y=Math.max(40,Math.min(H-40,this.y));
-
-    // Movement trail
-    if(Math.abs(mx)>.5||Math.abs(my)>.5){
-      this.trailTimer++;
-      if(this.trailTimer%2===0){
-        this.trailPositions.push({x:this.x,y:this.y,life:10});
-        if(this.trailPositions.length>6)this.trailPositions.shift();
-      }
-    }else{this.trailTimer=0}
-    this.trailPositions.forEach(t=>t.life--);
-    this.trailPositions=this.trailPositions.filter(t=>t.life>0);
-
-    if(this.invincible>0)this.invincible--;
-    if(this.shootCD>0)this.shootCD--;
-    const baseShootCD=difficulty==='rookie'?6:difficulty==='veteran'?11:15;
-    if(this.shootCD<=0){
-      this.shoot();
-      this.shootCD=this.power>=3?Math.floor(baseShootCD*.5):this.power>=2?Math.floor(baseShootCD*.75):baseShootCD;
-    }
-    this.engineFlame+=.3;
-  }
-  shoot(){
-    sfxShoot();
-    const bx=this.x,by=this.y-this.h/2;
-    const bs=rageMode?1.2:1;
-    if(this.power===1){
-      bullets.push(new Bullet(bx,by,0,-10*bs,true));
-    }else if(this.power===2){
-      bullets.push(new Bullet(bx-5,by,0,-10*bs,true));
-      bullets.push(new Bullet(bx+5,by,0,-10*bs,true));
-    }else{
-      bullets.push(new Bullet(bx,by,0,-10*bs,true));
-      bullets.push(new Bullet(bx-8,by,-1.5,-9*bs,true));
-      bullets.push(new Bullet(bx+8,by,1.5,-9*bs,true));
-    }
-    // Muzzle flash particles
-    for(let i=0;i<2;i++)spawnParticle(bx,by,Math.random()*2-1,-2-Math.random()*2,'#f1c40f',3+Math.random()*3,2,'glow');
-  }
-  hit(){
-    if(this.invincible>0)return false;
-    sfxHit();
-    addShake(6,8);
-    comboCount=0;comboTimer=0;rageMode=false;
-    if(this.shield){this.shield=false;this.invincible=40;spawnExplosion(this.x,this.y,15,'#2ecc71');return false}
-    lives--;
-    this.invincible=90;
-    spawnExplosion(this.x,this.y,10,'#ff6b6b');
-    if(lives<=0){state=STATE.GAME_OVER;sfxGameOver();addShake(20,30)}
-  }
-  draw(ctx){
-    if(this.invincible>0&&Math.floor(this.invincible/4)%2===0)return;
-    ctx.save();
-    ctx.translate(this.x,this.y);
-    const rage=rageMode;
-
-    // Movement trail afterimages
-    this.trailPositions.forEach(t=>{
-      const a=t.life/10*.25;
-      ctx.save();ctx.globalAlpha=a;ctx.translate(t.x-this.x,t.y-this.y);
-      this.drawBody(ctx,true);
-      ctx.restore();
-    });
-
-    this.drawBody(ctx,false);
-    ctx.restore();
-  }
-  drawBody(ctx,isTrail){
-    const rage=rageMode;
-    const w=this.w,h=this.h;
-
-    // === ENGINE FLAMES (epic sci-fi thrusters) ===
-    const fl=Math.sin(this.engineFlame)*10+28;
-    // Outer flame plume — large and dramatic
-    const flOuter=ctx.createLinearGradient(0,h/2-4,0,h/2+fl);
-    flOuter.addColorStop(0,'rgba(255,255,255,0.9)');
-    flOuter.addColorStop(0.08,rage?'#ffaa00':'#7df9ff');
-    flOuter.addColorStop(0.25,rage?'#ff5500':'#00aaff');
-    flOuter.addColorStop(0.55,rage?'#cc0000':'#0055cc');
-    flOuter.addColorStop(0.85,rage?'#660000':'#002266');
-    flOuter.addColorStop(1,'transparent');
-    ctx.fillStyle=flOuter;
-    ctx.beginPath();ctx.moveTo(-8,h/2-4);
-    ctx.quadraticCurveTo(-4,h/2+fl*0.3,0,h/2+fl);
-    ctx.quadraticCurveTo(4,h/2+fl*0.3,8,h/2-4);ctx.fill();
-
-    // Inner bright core
-    const flInner=ctx.createLinearGradient(0,h/2-2,0,h/2+fl*.55);
-    flInner.addColorStop(0,'#fff');flInner.addColorStop(0.3,'#ff0');flInner.addColorStop(1,'transparent');
-    ctx.fillStyle=flInner;
-    ctx.beginPath();ctx.moveTo(-3,h/2-2);
-    ctx.quadraticCurveTo(-1.5,h/2+fl*0.3,0,h/2+fl*.55);
-    ctx.quadraticCurveTo(1.5,h/2+fl*0.3,3,h/2-2);ctx.fill();
-
-    // Side thrusters (2 smaller)
-    for(let sx=-10;sx<=10;sx+=20){
-      const sf=fl*(0.5+0.25*Math.sin(frameCount*0.35+sx));
-      const sg=ctx.createLinearGradient(sx,h/2-2,sx,h/2+sf);
-      sg.addColorStop(0,'#fff');sg.addColorStop(0.15,rage?'#ffcc00':'#e0f8ff');sg.addColorStop(0.5,rage?'#ff4400':'#0088cc');sg.addColorStop(1,'transparent');
-      ctx.fillStyle=sg;
-      ctx.beginPath();ctx.moveTo(sx-3,h/2-2);ctx.quadraticCurveTo(sx,h/2+sf*.4,sx,h/2+sf);ctx.quadraticCurveTo(sx+1,h/2+sf*.4,sx+3,h/2-2);ctx.fill();
-    }
-    // Engine particles
-    if(!isTrail&&frameCount%2===0){
-      for(let i=0;i<(rage?3:1);i++){
-        spawnEngineParticle(this.x+Math.random()*8-4,this.y+h/2+Math.random()*fl*.5);
-      }
-    }
-
-    // === MAIN FUSELAGE ===
-    // Metallic sci-fi gradient: silver-blue (rage: crimson)
-    const bodyG=ctx.createLinearGradient(-w/2,0,w/2,0);
-    if(rage){bodyG.addColorStop(0,'#2a0505');bodyG.addColorStop(0.15,'#6b1010');bodyG.addColorStop(0.4,'#cc1a1a');bodyG.addColorStop(0.6,'#e82020');bodyG.addColorStop(0.85,'#6b1010');bodyG.addColorStop(1,'#2a0505')}
-    else{bodyG.addColorStop(0,'#0c1f35');bodyG.addColorStop(0.15,'#1a4468');bodyG.addColorStop(0.4,'#3a8fc4');bodyG.addColorStop(0.6,'#5cb8e0');bodyG.addColorStop(0.85,'#1a4468');bodyG.addColorStop(1,'#0c1f35')}
-    ctx.fillStyle=bodyG;
-    // Aerodynamic fighter outline with bezier curves
-    ctx.beginPath();
-    ctx.moveTo(0,-h/2);
-    ctx.bezierCurveTo(w/3,-h/2+2,w/2-1,-h/3,w/2-1,-2);
-    ctx.lineTo(w/2,5);ctx.lineTo(w/2-2,h/2-6);
-    ctx.lineTo(w/2-6,h/2-2);ctx.lineTo(w/2-12,h/2-8);
-    ctx.lineTo(-w/2+12,h/2-8);ctx.lineTo(-w/2+6,h/2-2);
-    ctx.lineTo(-w/2+2,h/2-6);ctx.lineTo(-w/2,5);
-    ctx.lineTo(-w/2+1,-2);ctx.bezierCurveTo(-w/2+1,-h/3,-w/3,-h/2+2,0,-h/2);
-    ctx.closePath();ctx.fill();
-    // Edge highlight
-    ctx.strokeStyle=rage?'rgba(255,130,130,0.55)':'rgba(140,210,255,0.55)';ctx.lineWidth=1.2;ctx.stroke();
-
-    // === INNER BODY PANEL (darker inset) ===
-    ctx.fillStyle=rage?'rgba(50,0,0,0.4)':'rgba(5,20,50,0.45)';
-    ctx.beginPath();
-    ctx.moveTo(0,-h/2+4);ctx.lineTo(w/4-2,-5);ctx.lineTo(w/3-1,4);ctx.lineTo(w/5,h/2-14);
-    ctx.lineTo(-w/5,h/2-14);ctx.lineTo(-w/3+1,4);ctx.lineTo(-w/4+2,-5);
-    ctx.closePath();ctx.fill();
-    // Panel seam lines (subtle)
-    ctx.strokeStyle=rage?'rgba(255,90,90,0.25)':'rgba(100,180,255,0.25)';ctx.lineWidth=0.6;
-    ctx.beginPath();ctx.moveTo(-w/3+2,h/2-20);ctx.quadraticCurveTo(0,h/2-14,w/3-2,h/2-20);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(-w/3+4,-3);ctx.quadraticCurveTo(0,2,w/3-4,-3);ctx.stroke();
-
-    // === SWEPT-BACK WINGS ===
-    // Left wing
-    ctx.fillStyle=rage?'#4a0808':'#081c34';
-    ctx.beginPath();ctx.moveTo(-w/2+4,-2);ctx.lineTo(-w/2-5,7);ctx.lineTo(-w/2-4,16);ctx.lineTo(-w/2,13);ctx.lineTo(-w/2+6,3);ctx.closePath();ctx.fill();
-    ctx.strokeStyle=rage?'rgba(255,70,70,0.5)':'rgba(70,190,255,0.5)';ctx.lineWidth=1;ctx.stroke();
-    // Wing tip glow
-    const tipGlowL=ctx.createLinearGradient(-w/2-5,7,-w/2-4,16);
-    tipGlowL.addColorStop(0,rage?'rgba(255,100,100,0.6)':'rgba(100,210,255,0.6)');tipGlowL.addColorStop(1,'transparent');
-    ctx.strokeStyle=tipGlowL;ctx.lineWidth=1.8;
-    ctx.beginPath();ctx.moveTo(-w/2-5,7);ctx.lineTo(-w/2-4,16);ctx.stroke();
-    // Right wing
-    ctx.fillStyle=rage?'#4a0808':'#081c34';
-    ctx.beginPath();ctx.moveTo(w/2-4,-2);ctx.lineTo(w/2+5,7);ctx.lineTo(w/2+4,16);ctx.lineTo(w/2,13);ctx.lineTo(w/2-6,3);ctx.closePath();ctx.fill();
-    ctx.strokeStyle=rage?'rgba(255,70,70,0.5)':'rgba(70,190,255,0.5)';ctx.lineWidth=1;ctx.stroke();
-    const tipGlowR=ctx.createLinearGradient(w/2+5,7,w/2+4,16);
-    tipGlowR.addColorStop(0,rage?'rgba(255,100,100,0.6)':'rgba(100,210,255,0.6)');tipGlowR.addColorStop(1,'transparent');
-    ctx.strokeStyle=tipGlowR;ctx.lineWidth=1.8;
-    ctx.beginPath();ctx.moveTo(w/2+5,7);ctx.lineTo(w/2+4,16);ctx.stroke();
-
-    // Wing-mounted indicator lights (power level)
-    const pwCol=this.power>=3?'#f1c40f':this.power>=2?'#e67e22':'#3498db';
-    ctx.fillStyle=pwCol;ctx.shadowColor=pwCol;ctx.shadowBlur=this.power>=3?7:3;
-    ctx.beginPath();ctx.arc(-w/2-2,12,2.8,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(w/2+2,12,2.8,0,Math.PI*2);ctx.fill();
-    ctx.shadowBlur=0;
-
-    // === COCKPIT (glass canopy) ===
-    const ckG=ctx.createRadialGradient(1,-5,2,0,-3,13);
-    if(rage){ckG.addColorStop(0,'rgba(255,200,200,0.92)');ckG.addColorStop(0.25,'rgba(255,140,140,0.5)');ckG.addColorStop(0.7,'rgba(60,8,8,0.7)');ckG.addColorStop(1,'rgba(20,3,3,0.92)')}
-    else{ckG.addColorStop(0,'rgba(255,255,255,0.92)');ckG.addColorStop(0.25,'rgba(180,230,255,0.55)');ckG.addColorStop(0.7,'rgba(15,50,100,0.7)');ckG.addColorStop(1,'rgba(5,15,40,0.92)')}
-    ctx.fillStyle=ckG;
-    ctx.beginPath();ctx.ellipse(0,-5,6.8,14,-0.02,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=rage?'rgba(255,110,110,0.5)':'rgba(110,210,255,0.5)';ctx.lineWidth=1.1;ctx.stroke();
-    // Glass highlight
-    ctx.fillStyle='rgba(255,255,255,0.28)';ctx.beginPath();ctx.ellipse(-2.5,-10,2.2,5,-0.25,0,Math.PI*2);ctx.fill();
-
-    // === ENERGY CORE (below cockpit, pulsing) ===
-    const corePulse=Math.sin(this.engineFlame*1.5)*0.3+0.7;
-    const coreColor=rage?'#ff3333':this.power>=3?'#f1c40f':this.power>=2?'#f39c12':'#2ecc71';
-    const coreG=ctx.createRadialGradient(0,5,1,0,5,5*corePulse);
-    coreG.addColorStop(0,'#fff');coreG.addColorStop(0.25,coreColor);coreG.addColorStop(1,'transparent');
-    ctx.fillStyle=coreG;ctx.beginPath();ctx.arc(0,5,5*corePulse,0,Math.PI*2);ctx.fill();
-    // White hot center
-    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,5,1.6,0,Math.PI*2);ctx.fill();
-
-    // === NOSE ===
-    ctx.fillStyle=rage?'#ff3333':'#e74c3c';ctx.beginPath();ctx.arc(0,-h/2+3,3.2,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.35)';ctx.beginPath();ctx.arc(0,-h/2+2.5,1.3,0,Math.PI*2);ctx.fill();
-
-    // === AIR INTAKES (side) ===
-    ctx.fillStyle=rage?'#1a0202':'#041020';
-    ctx.beginPath();ctx.moveTo(-3,-3);ctx.lineTo(-10,4);ctx.lineTo(-9,8);ctx.lineTo(-4,3);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(3,-3);ctx.lineTo(10,4);ctx.lineTo(9,8);ctx.lineTo(4,3);ctx.closePath();ctx.fill();
-    ctx.strokeStyle=rage?'rgba(255,80,80,0.4)':'rgba(90,180,255,0.4)';ctx.lineWidth=0.7;
-    ctx.beginPath();ctx.moveTo(-3,-3);ctx.lineTo(-10,4);ctx.moveTo(3,-3);ctx.lineTo(10,4);ctx.stroke();
-
-    // === ENGINE PODS (rear) ===
-    ctx.fillStyle='#1a1a1a';
-    ctx.beginPath();ctx.moveTo(-6,h/2-12);ctx.lineTo(2,h/2-5);ctx.lineTo(2,h/2-1);ctx.lineTo(-4,h/2-8);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(6,h/2-12);ctx.lineTo(-2,h/2-5);ctx.lineTo(-2,h/2-1);ctx.lineTo(4,h/2-8);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#3a3a3a';ctx.fillRect(-7,h/2-7,4,5);ctx.fillRect(3,h/2-7,4,5);
-
-    // === HEX SHIELD ===
-    if(this.shield&&!isTrail){
-      ctx.strokeStyle='rgba(46,204,113,0.65)';ctx.lineWidth=2.8;
-      const hexR=w/2+16;
-      ctx.beginPath();
-      for(let i=0;i<6;i++){const a=this.shieldAngle+Math.PI/6*i;const px=Math.cos(a)*hexR,py=Math.sin(a)*hexR;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py)}
-      ctx.closePath();ctx.stroke();
-      ctx.strokeStyle='rgba(46,204,113,0.22)';ctx.lineWidth=1.2;
-      ctx.beginPath();
-      for(let i=0;i<6;i++){const a=this.shieldAngle+.12+Math.PI/6*i;const px=Math.cos(a)*(hexR+6),py=Math.sin(a)*(hexR+6);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py)}
-      ctx.closePath();ctx.stroke();
-    }
-  }
-}
-
-class Enemy{
-  constructor(x,y,type){
-    this.x=x;this.y=y;
-    this.type=type||'small';
-    if(type==='small'){this.w=26;this.h=28;this.hp=difficulty==='rookie'?1:difficulty==='veteran'?1:2;this.speed=difficulty==='rookie'?1.5:difficulty==='veteran'?2.5:3.5;this.score=100}
-    else if(type==='medium'){this.w=36;this.h=36;this.hp=difficulty==='rookie'?1:difficulty==='veteran'?2:3;this.speed=difficulty==='rookie'?1:difficulty==='veteran'?1.8:2.5;this.score=200}
-    else{this.w=48;this.h=48;this.hp=difficulty==='rookie'?2:difficulty==='veteran'?3:5;this.speed=difficulty==='rookie'?0.6:difficulty==='veteran'?1.2:2;this.score=400}
-    this.shootTimer=60+Math.random()*120;
-    this.wobble=Math.random()*Math.PI*2;
-    this.flashTimer=0;
-    this.engineGlow=Math.random()*Math.PI*2;
-  }
-  update(){
-    this.y+=this.speed;
-    this.wobble+=.05;
-    this.engineGlow+=.3;
-    this.x+=Math.sin(this.wobble)*.5;
-    this.shootTimer--;
-    if(this.flashTimer>0)this.flashTimer--;
-    if(this.shootTimer<=0){
-      const sm=difficulty==='rookie'?3:difficulty==='veteran'?1:0.7;
-      this.shootTimer=(this.type==='small'?120+Math.random()*80:this.type==='medium'?80+Math.random()*70:55+Math.random()*55)*sm;
-      const angle=Math.atan2(player.y-this.y,player.x-this.x);
-      const bs=(difficulty==='rookie'?1:difficulty==='veteran'?2.2:3);
-      bullets.push(new Bullet(this.x,this.y,Math.cos(angle)*bs,Math.sin(angle)*bs,false));
-    }
-  }
-  hit(dmg){
-    this.hp-=dmg;this.flashTimer=4;
-    spawnHitSpark(this.x,this.y,'#fff');
-    if(this.hp<=0){
-      score+=this.score;
-      addScorePopup(this.x,this.y,this.score);
-      addCombo();
-      spawnExplosion(this.x,this.y,this.type==='large'?20:12);
-      // Higher power-up drop rate, especially early
-      const dropRate=difficulty==='rookie'?(level===0?.35:.25):difficulty==='veteran'?(level===0?.16:.12):(level===0?.12:.06);
-      if(Math.random()<dropRate||(this.type==='large'&&Math.random()<.5))spawnPowerUp(this.x,this.y);
-      return true;
-    }
-    return false;
-  }
-  draw(ctx){
-    ctx.save();ctx.translate(this.x,this.y);
-    const w=this.w,h=this.h,fl=Math.sin(this.engineGlow)*.3+.7;
-
-    if(this.flashTimer>0&&this.flashTimer%2===0){ctx.globalAlpha=.5}
-
-    if(this.type==='small'){
-      // === ALIEN SCOUT — aggressive red drone with spikes ===
-      const fl=Math.sin(this.engineGlow)*.3+.7;
-      // Body shadow/aura
-      ctx.shadowColor='rgba(200,0,0,0.5)';ctx.shadowBlur=6;
-      // Main body gradient (dark red to bright red)
-      const bg=ctx.createRadialGradient(0,2,2,0,0,w/2);
-      bg.addColorStop(0,'#ff4444');bg.addColorStop(0.5,'#c0392b');bg.addColorStop(0.8,'#5a0000');bg.addColorStop(1,'#2a0000');
-      ctx.fillStyle=bg;
-      // Diamond/arrow shape body
-      ctx.beginPath();ctx.moveTo(0,h/2);
-      ctx.lineTo(w/2-2,4);ctx.lineTo(w/2,-6);ctx.lineTo(w/2-4,-h/2+6);
-      ctx.lineTo(4,-h/2+2);ctx.lineTo(-4,-h/2+2);
-      ctx.lineTo(-w/2+4,-h/2+6);ctx.lineTo(-w/2,-6);ctx.lineTo(-w/2+2,4);
-      ctx.closePath();ctx.fill();
-      ctx.shadowBlur=0;
-      // Edge highlight
-      ctx.strokeStyle='rgba(255,150,150,0.6)';ctx.lineWidth=0.8;ctx.stroke();
-      // Spikes (aggressive alien look)
-      ctx.fillStyle='#ff6666';
-      ctx.beginPath();ctx.moveTo(-w/2+4,-h/2+4);ctx.lineTo(-w/2-1,-h/2+1);ctx.lineTo(-w/2+6,-h/2+6);ctx.fill();
-      ctx.beginPath();ctx.moveTo(w/2-4,-h/2+4);ctx.lineTo(w/2+1,-h/2+1);ctx.lineTo(w/2-6,-h/2+6);ctx.fill();
-      ctx.beginPath();ctx.moveTo(-4,h/2-4);ctx.lineTo(-6,h/2+2);ctx.lineTo(-2,h/2-2);ctx.fill();
-      ctx.beginPath();ctx.moveTo(4,h/2-4);ctx.lineTo(6,h/2+2);ctx.lineTo(2,h/2-2);ctx.fill();
-      // Glowing eye (center)
-      const eyeG=ctx.createRadialGradient(0,2,1,0,2,5);
-      eyeG.addColorStop(0,'#fff');eyeG.addColorStop(0.3,'#ffdd00');eyeG.addColorStop(1,'rgba(255,100,0,0)');
-      ctx.fillStyle=eyeG;ctx.beginPath();ctx.arc(0,2,5,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#000';ctx.beginPath();ctx.arc(0,2,1.8,0,Math.PI*2);ctx.fill();
-      // Engine glow (bottom)
-      ctx.fillStyle='#ff4400';ctx.shadowColor='#ff4400';ctx.shadowBlur=4*fl;
-      ctx.fillRect(-3,-h/2-1,6,3);
-      ctx.shadowBlur=0;
-
-    }else if(this.type==='medium'){
-      // === ALIEN INTERCEPTOR — purple/black with tentacle arms ===
-      const fl=Math.sin(this.engineGlow)*.3+.7;
-      // Aura
-      ctx.shadowColor='rgba(140,20,220,0.45)';ctx.shadowBlur=8;
-      // Radial body
-      const bg=ctx.createRadialGradient(0,3,3,0,0,w/2);
-      bg.addColorStop(0,'#bb44ee');bg.addColorStop(0.4,'#6c1d8a');bg.addColorStop(0.75,'#2a0a3a');bg.addColorStop(1,'#0a0010');
-      ctx.fillStyle=bg;
-      ctx.beginPath();ctx.moveTo(0,h/2);
-      ctx.lineTo(8,5);ctx.lineTo(w/2-1,-1);ctx.lineTo(w/2-4,-h/2+6);
-      ctx.lineTo(6,-h/2+2);ctx.lineTo(-6,-h/2+2);
-      ctx.lineTo(-w/2+4,-h/2+6);ctx.lineTo(-w/2+1,-1);ctx.lineTo(-8,5);
-      ctx.closePath();ctx.fill();
-      ctx.shadowBlur=0;
-      ctx.strokeStyle='rgba(220,160,255,0.6)';ctx.lineWidth=1;ctx.stroke();
-      // Tentacle arms (sinuous)
-      ctx.strokeStyle='#8b3fbf';ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.moveTo(-w/2+2,-2);
-      ctx.quadraticCurveTo(-w/2-6,0,-w/2-4,8);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(w/2-2,-2);
-      ctx.quadraticCurveTo(w/2+6,0,w/2+4,8);ctx.stroke();
-      // Tentacle tips glow
-      ctx.fillStyle='rgba(220,100,255,0.9)';ctx.shadowColor='#cc66ff';ctx.shadowBlur=4;
-      ctx.beginPath();ctx.arc(-w/2-4,8,2.5,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(w/2+4,8,2.5,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;
-      // Multi-eye cluster
-      for(let ex=-3;ex<=3;ex+=3){
-        const egG=ctx.createRadialGradient(ex,3,0.5,ex,3,3.5);
-        egG.addColorStop(0,'#fff');egG.addColorStop(0.4,'#ff88ff');egG.addColorStop(1,'transparent');
-        ctx.fillStyle=egG;ctx.beginPath();ctx.arc(ex,3,3.5,0,Math.PI*2);ctx.fill();
-      }
-      ctx.fillStyle='#100';ctx.beginPath();ctx.arc(-3,3,1,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(3,3,1,0,Math.PI*2);ctx.fill();
-      // Engine slits
-      ctx.fillStyle='#dd44ff';ctx.shadowColor='#dd44ff';ctx.shadowBlur=5*fl;
-      ctx.fillRect(-5,-h/2-1,4,3);ctx.fillRect(1,-h/2-1,4,3);
-      ctx.shadowBlur=0;
-
-    }else{
-      // === HEAVY SIEGE DRONE — dark metal with armor plates & cannons ===
-      const fl=Math.sin(this.engineGlow)*.3+.7;
-      // Menacing aura
-      ctx.shadowColor='rgba(255,80,0,0.4)';ctx.shadowBlur=10;
-      // Outer armor (dark metallic)
-      const bg=ctx.createRadialGradient(0,5,5,0,0,w/2);
-      bg.addColorStop(0,'#4a4a5a');bg.addColorStop(0.3,'#2a2a35');bg.addColorStop(0.7,'#151520');bg.addColorStop(1,'#0a0a10');
-      ctx.fillStyle=bg;
-      ctx.beginPath();ctx.moveTo(0,h/2);
-      ctx.lineTo(w/2-6,8);ctx.lineTo(w/2,-2);ctx.lineTo(w/2-3,-h/2+8);
-      ctx.lineTo(w/2-9,-h/2);ctx.lineTo(-w/2+9,-h/2);
-      ctx.lineTo(-w/2+3,-h/2+8);ctx.lineTo(-w/2,-2);ctx.lineTo(-w/2+6,8);
-      ctx.closePath();ctx.fill();
-      ctx.shadowBlur=0;
-      ctx.strokeStyle='rgba(255,140,60,0.5)';ctx.lineWidth=1.3;ctx.stroke();
-      // Armor segment lines
-      ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=0.7;
-      ctx.beginPath();ctx.moveTo(-w/2+9,-h/2+16);ctx.lineTo(w/2-9,-h/2+16);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(-w/2+11,-2);ctx.lineTo(w/2-11,-2);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(-8,h/2-8);ctx.lineTo(8,h/2-8);ctx.stroke();
-      // Central glowing eye/cannon
-      const eyeG=ctx.createRadialGradient(0,6,2,0,6,10);
-      eyeG.addColorStop(0,'#fff');eyeG.addColorStop(0.25,'#ff6600');eyeG.addColorStop(0.6,'#cc3300');eyeG.addColorStop(1,'rgba(100,10,0,0)');
-      ctx.fillStyle=eyeG;ctx.beginPath();ctx.arc(0,6,10,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#000';ctx.beginPath();ctx.arc(0,6,2.5,0,Math.PI*2);ctx.fill();
-      // Side cannons (turret-like)
-      ctx.fillStyle='#1a1a28';
-      ctx.beginPath();ctx.moveTo(-w/2-5,-8);ctx.lineTo(-w/2+2,-4);ctx.lineTo(-w/2+2,1);ctx.lineTo(-w/2-5,-4);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(w/2+5,-8);ctx.lineTo(w/2-2,-4);ctx.lineTo(w/2-2,1);ctx.lineTo(w/2+5,-4);ctx.closePath();ctx.fill();
-      ctx.fillStyle='#ff4400';ctx.shadowColor='#ff4400';ctx.shadowBlur=3*fl;
-      ctx.beginPath();ctx.arc(-w/2-1.5,-3.5,2.5,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(w/2+1.5,-3.5,2.5,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;
-      // Triple thruster engines
-      ctx.fillStyle='#222';
-      ctx.fillRect(-12,-h/2,5,7);ctx.fillRect(-3,-h/2-3,6,8);ctx.fillRect(7,-h/2,5,7);
-      ctx.fillStyle='#ff6600';ctx.shadowColor='#ff6600';ctx.shadowBlur=5*fl;
-      ctx.fillRect(-11,-h/2,4,5);ctx.fillRect(-2,-h/2-2,5,6);ctx.fillRect(8,-h/2,4,5);
-      ctx.shadowBlur=0;
-      // Nose cannon barrel
-      ctx.fillStyle='#333';ctx.fillRect(-3,h/2-8,6,10);
-      ctx.fillStyle='#ff4400';ctx.shadowColor='#ff4400';ctx.shadowBlur=3;
-      ctx.beginPath();ctx.arc(0,h/2+2,4,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;
-    }
-
-    ctx.restore();
-  }
-}
-
-class Boss{
-  constructor(name,level){
-    this.name=name;
-    this.color=bossColors[name];
-    this.level=level;
-    this.w=90;this.h=150;
-    this.x=W/2;this.y=-180;
-    this.targetY=120;
-    this.maxHp=Math.floor((20+level*10)*(difficulty==='rookie'?0.35:difficulty==='veteran'?0.8:1.3));
-    this.hp=this.maxHp;
-    this.phase=0;this.shootTimer=0;
-    this.animTime=Math.random()*Math.PI*2;
-    this.entering=true;this.entrancePhase=0;
-    this.flashTimer=0;this.deathTimer=0;
-    this.armL=0;this.armR=0;this.legL=0;this.legR=0;
-    this.bodyBob=0;this.specialTimer=0;
-    this.summonedEnemies=[];
-    // Entrance animation
-    this.warningTimer=0;this.shockwaves=[];
-  }
-  update(){
-    this.animTime+=.05;
-    if(this.entering){
-      this.warningTimer++;
-      if(this.warningTimer<60){
-        // WARNING phase - boss descends
-        this.y=-100+(this.warningTimer/60)*50;
-        if(this.warningTimer===30)addShake(12,20);
-        if(this.warningTimer<40)return;
-      }
-      this.y+=(this.targetY-this.y)*.04;
-      if(Math.abs(this.y-this.targetY)<3&&this.warningTimer>60){
-        this.y=this.targetY;
-        this.entering=false;
-        // Entrance shockwave
-        for(let i=0;i<3;i++){
-          this.shockwaves.push({r:20,alpha:1,delay:i*8});
-        }
-        addShake(10,15);
-      }
-      return;
-    }
-
-    // Shockwave rings
-    this.shockwaves.forEach(s=>{s.r+=6;s.alpha-=.03});
-    this.shockwaves=this.shockwaves.filter(s=>s.alpha>0);
-
-    this.bodyBob=Math.sin(this.animTime*.7)*8;
-    // Movement patterns (same as original)
-    if(this.name==='李亚增'){
-      this.x+=Math.sin(this.animTime*.5)*1.5;
-      if(Math.random()<.008)this.summonMinions();
-    }else if(this.name==='李彦祥'){
-      this.x+=Math.sin(this.animTime*.8)*2;
-    }else if(this.name==='李飞'){
-      this.x+=Math.sin(this.animTime*1.4)*3.5;
-      if(this.hp<this.maxHp*.5)this.x+=Math.cos(this.animTime*1.1)*3;
-    }else if(this.name==='杨小军'){
-      this.x+=Math.sin(this.animTime*.3)*3;
-      if(this.hp<this.maxHp*.5)this.x+=Math.sin(this.animTime*.7)*2;
-    }else if(this.name==='王小涛'){
-      const pp=(this.maxHp-this.hp)/this.maxHp;
-      this.x+=Math.sin(this.animTime*.4+pp)*2.5;
-      if(pp>.3)this.x+=Math.cos(this.animTime*.65)*1.5;
-      if(pp>.6)this.x+=Math.sin(this.animTime*.9)*2;
-    }else if(this.name==='伍建忠'){
-      const pct=(this.maxHp-this.hp)/this.maxHp;
-      this.x+=Math.sin(this.animTime*.5)*2;
-      if(pct>.25)this.x+=Math.cos(this.animTime*.7)*2;
-      if(pct>.5)this.x+=Math.sin(this.animTime*1.2)*2.5;
-      if(pct>.75)this.x+=Math.cos(this.animTime*.9)*3;
-    }
-    this.x=Math.max(this.w/2+20,Math.min(W-this.w/2-20,this.x));
-
-    this.armL=Math.sin(this.animTime*2)*.4;
-    this.armR=Math.sin(this.animTime*2+Math.PI)*.4;
-    this.legL=Math.sin(this.animTime*3)*.3;
-    this.legR=Math.sin(this.animTime*3+Math.PI)*.3;
-
-    this.shootTimer--;
-    this.specialTimer--;
-    const phasePct=(this.maxHp-this.hp)/this.maxHp;
-    if(phasePct>.5&&this.phase<1)this.phase=1;
-    if(phasePct>.75&&this.phase<2)this.phase=2;
-
-    // Near-death: increased fire rate
-    const nearDeath=this.hp<this.maxHp*.2;
-    if(this.shootTimer<=0&&!this.entering)this.bossAttack();
-
-    // Near-death rapid panting effect
-    if(nearDeath&&frameCount%3===0){
-      spawnParticle(this.x+Math.random()*30-15,this.y+Math.random()*20-10,(Math.random()-.5)*2,(Math.random()-.5)*2,'#ff0000',8+Math.random()*6,2+Math.random()*3,'glow');
-    }
-
-    // Particle halo
-    if(frameCount%6===0){
-      const ha=Math.random()*Math.PI*2;
-      const hr=35+Math.random()*15;
-      const hpx=this.x+Math.cos(ha)*hr;
-      const hpy=this.y+this.bodyBob+Math.sin(ha)*hr;
-      const hColor=this.hp<this.maxHp*.3?'#ff4444':this.color.glow;
-      spawnParticle(hpx,hpy,(Math.random()-.5)*.5,(Math.random()-.5)*.5,hColor,15+Math.random()*20,1.5+Math.random()*2,'glow');
-    }
-
-    if(this.flashTimer>0)this.flashTimer--;
-
-    // Summoned minions
-    if(this.name==='李亚增'&&this.summonedEnemies.length>0){
-      this.summonedEnemies.forEach(e=>{e.y+=e.speed;e.shootTimer--});
-      this.summonedEnemies=this.summonedEnemies.filter(e=>e.y<H+50);
-    }
-  }
-  summonMinions(){
-    for(let i=0;i<2;i++){
-      this.summonedEnemies.push({x:this.x-20+Math.random()*40,y:this.y+30,speed:2+Math.random()*2,shootTimer:40+Math.random()*40,w:20,h:20});
-    }
-  }
-  bossAttack(){
-    const dm=difficulty==='rookie'?2.5:difficulty==='veteran'?1:0.7;
-    const baseCD=(this.level>=4?18:this.level>=2?25:30);
-    const nearDeathMult=this.hp<this.maxHp*.2?.6:1;
-    this.shootTimer=Math.max(8,(baseCD-this.level*3-this.phase*5)*dm*nearDeathMult);
-    const bx=this.x,by=this.y+20;
-    const bs=(difficulty==='rookie'?0.5:difficulty==='veteran'?0.9:1.3);
-    if(this.name==='李亚增'){
-      const a=Math.atan2(player.y-by,player.x-bx);
-      for(let i=-1;i<=1;i++)bullets.push(new Bullet(bx,by,Math.cos(a+i*.3)*4*bs,Math.sin(a+i*.3)*4*bs,false,'#f39c12'));
-    }else if(this.name==='李彦祥'){
-      const count=Math.floor((4+this.phase*2)*bs);
-      for(let i=0;i<count;i++){
-        const a=(Math.PI*2/count)*i+this.animTime*.3;
-        bullets.push(new Bullet(bx,by,Math.cos(a)*3.5*bs,Math.sin(a)*3.5*bs,false,'#e74c3c'));
-      }
-    }else if(this.name==='李飞'){
-      const a=Math.atan2(player.y-by,player.x-bx);
-      for(let i=-2;i<=2;i++)bullets.push(new Bullet(bx,by,Math.cos(a+i*.2)*5*bs,Math.sin(a+i*.2)*5*bs,false,'#bb8fce'));
-      if(this.phase>=1)for(let i=0;i<3;i++){const a2=Math.random()*Math.PI*2;bullets.push(new Bullet(bx,by,Math.cos(a2)*4*bs,Math.sin(a2)*4*bs,false,'#8e44ad'))}
-    }else if(this.name==='杨小军'){
-      for(let i=-2;i<=2;i++)bullets.push(new Bullet(bx+i*8,by,0,5*bs,false,'#2ecc71'));
-      if(this.phase>=1)for(let i=-3;i<=3;i+=2)bullets.push(new Bullet(bx+i*6,by,i*.8,4.5*bs,false,'#27ae60'));
-    }else if(this.name==='王小涛'){
-      const a=Math.atan2(player.y-by,player.x-bx);
-      for(let i=-1;i<=1;i++)bullets.push(new Bullet(bx,by,Math.cos(a+i*.25)*4.5*bs,Math.sin(a+i*.25)*4.5*bs,false,'#f1c40f'));
-      if(this.phase>=1){for(let i=0;i<4;i++){const a2=(Math.PI*2/4)*i+this.animTime*.2;bullets.push(new Bullet(bx,by,Math.cos(a2)*3*bs,Math.sin(a2)*3*bs,false,'#e67e22'))}}
-      if(this.phase>=2){for(let i=-3;i<=3;i++)bullets.push(new Bullet(bx+i*7,by,0,5.5*bs,false,'#e74c3c'))}
-    }else if(this.name==='伍建忠'){
-      const a=Math.atan2(player.y-by,player.x-bx);
-      for(let i=-1;i<=1;i++)bullets.push(new Bullet(bx,by,Math.cos(a+i*.3)*4.5*bs,Math.sin(a+i*.3)*4.5*bs,false,'#e74c3c'));
-      if(this.phase>=1){for(let i=0;i<5;i++){const a2=(Math.PI*2/5)*i+this.animTime*.25;bullets.push(new Bullet(bx,by,Math.cos(a2)*3.5*bs,Math.sin(a2)*3.5*bs,false,'#f1948a'))}}
-      if(this.phase>=2){for(let i=-3;i<=3;i++)bullets.push(new Bullet(bx+i*7,by,0,5.5*bs,false,'#922b21'))}
-    }
-  }
-  hit(dmg){
-    this.hp-=dmg;
-    this.flashTimer=5;
-    sfxBossHit();
-    spawnHitSpark(this.x+Math.random()*40-20,this.y+this.bodyBob+Math.random()*40-20,this.color.glow);
-    spawnExplosion(this.x+Math.random()*40-20,this.y+this.bodyBob+Math.random()*40-20,6);
-    addShake(3,5);
-    if(this.hp<=0){
-      score+=1000+this.level*500;
-      addScorePopup(this.x,this.y,1000+this.level*500);
-      for(let i=0;i<40;i++)spawnExplosion(this.x+Math.random()*80-40,this.y+Math.random()*80-40,15);
-      addShake(18,25);
-      return true;
-    }
-    return false;
-  }
-  draw(ctx){
-    ctx.save();
-    ctx.translate(this.x,this.y+this.bodyBob);
-
-    // Entrance shockwave rings
-    this.shockwaves.forEach(s=>{
-      ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`;ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(0,20,s.r,0,Math.PI*2);ctx.stroke();
-      ctx.strokeStyle=`rgba(255,200,100,${s.alpha*.5})`;ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.arc(0,20,s.r+8,0,Math.PI*2);ctx.stroke();
-    });
-
-    if(this.flashTimer>0&&this.flashTimer%2===0){ctx.globalAlpha=.5}
-
-    const nearDeath=this.hp<this.maxHp*.2;
-    if(nearDeath&&Math.floor(frameCount/10)%2===0){
-      ctx.shadowColor='#ff0000';ctx.shadowBlur=25;
-    }
-
-    const hpPct=this.hp/this.maxHp;
-    const auraColor=hpPct<.3?'#ff4444':this.color.glow;
-    const auraAlpha=hpPct<.3?'55':'40';
-    const auraPulse=Math.sin(this.animTime*2.5)*0.15+0.85;
-    const auraG=ctx.createRadialGradient(0,0,25,0,0,90*auraPulse);
-    auraG.addColorStop(0,auraColor+auraAlpha);auraG.addColorStop(0.5,auraColor+'20');auraG.addColorStop(1,'transparent');
-    ctx.fillStyle=auraG;ctx.beginPath();ctx.arc(0,0,90*auraPulse,0,Math.PI*2);ctx.fill();
-    const innerAura=ctx.createRadialGradient(0,0,8,0,0,35);
-    innerAura.addColorStop(0,auraColor+'60');innerAura.addColorStop(1,'transparent');
-    ctx.fillStyle=innerAura;ctx.beginPath();ctx.arc(0,0,35,0,Math.PI*2);ctx.fill();
-
-    // ===== PROCEDURAL 2D BOSS BODY (ENHANCED) =====
-    const c=this.color;const ra=1-hpPct;const angy=ra>.3?Math.sin(this.animTime*6)*ra*4:0;
-
-    // Energy orbit ring — particles spinning around boss
-    for(let i=0;i<5;i++){
-      const orbitAngle=this.animTime*1.8+i*Math.PI*2/5;
-      const orbitR=48+Math.sin(this.animTime*3+i)*8;
-      const ox=Math.cos(orbitAngle)*orbitR,oy=Math.sin(orbitAngle)*orbitR;
-      const orbG=ctx.createRadialGradient(ox,oy,1,ox,oy,5);
-      orbG.addColorStop(0,'#fff');orbG.addColorStop(0.4,auraColor);orbG.addColorStop(1,'transparent');
-      ctx.fillStyle=orbG;ctx.beginPath();ctx.arc(ox,oy,5,0,Math.PI*2);ctx.fill();
-    }
-
-    // Shadow under boss
-    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.beginPath();ctx.ellipse(0,46,40,12,0,0,Math.PI*2);ctx.fill();
-
-    // Jet flame below boss (idle hover thrusters)
-    const jfH=Math.sin(this.animTime*5)*8+18;
-    const jfG=ctx.createLinearGradient(0,34,0,34+jfH);
-    jfG.addColorStop(0,c.glow);jfG.addColorStop(0.25,ra>.5?'#ff4400':'#ffaa00');jfG.addColorStop(0.6,'#ff2200');jfG.addColorStop(1,'transparent');
-    ctx.fillStyle=jfG;ctx.beginPath();ctx.moveTo(-10,34);ctx.lineTo(10,34);ctx.lineTo(14,34+jfH);ctx.lineTo(-14,34+jfH);ctx.closePath();ctx.fill();
-
-    // Main body — darker, more metallic with chiseled shape
-    const bodyG=ctx.createLinearGradient(0,-26,0,30);
-    bodyG.addColorStop(0,'#2a2a2a');bodyG.addColorStop(0.15,c.accent);bodyG.addColorStop(0.35,c.body);bodyG.addColorStop(0.5,'#0a0a0a');bodyG.addColorStop(0.7,c.body);bodyG.addColorStop(1,'#1a1a1a');
-    ctx.fillStyle=bodyG;ctx.beginPath();
-    ctx.moveTo(-32,6);ctx.lineTo(-26,-18);ctx.lineTo(-10,-26);ctx.quadraticCurveTo(0,-28,10,-26);
-    ctx.lineTo(26,-18);ctx.lineTo(32,6);ctx.lineTo(24,30);ctx.lineTo(-24,30);
-    ctx.closePath();ctx.fill();
-    ctx.strokeStyle=c.accent;ctx.lineWidth=2.5;ctx.stroke();
-
-    // Inner dark chest cavity
-    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();
-    ctx.moveTo(-16,-8);ctx.lineTo(-20,16);ctx.lineTo(20,16);ctx.lineTo(16,-8);ctx.closePath();ctx.fill();
-    // Core reactor glow in chest
-    const coreG=ctx.createRadialGradient(0,12,3,0,12,16);
-    coreG.addColorStop(0,'#fff');coreG.addColorStop(0.2,auraColor);coreG.addColorStop(0.5,c.glow);coreG.addColorStop(1,'transparent');
-    ctx.fillStyle=coreG;ctx.beginPath();ctx.arc(0,12,14+Math.sin(this.animTime*3)*2,0,Math.PI*2);ctx.fill();
-
-    // Shoulder armor plates
-    ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
-    for(let s=-1;s<=1;s+=2){
-      ctx.beginPath();ctx.moveTo(s*28,4);ctx.lineTo(s*46,-4);ctx.lineTo(s*42,18);ctx.lineTo(s*26,20);ctx.closePath();ctx.fill();ctx.stroke();
-      // Shoulder spike
-      ctx.fillStyle=c.accent;
-      ctx.beginPath();ctx.moveTo(s*40,-6);ctx.lineTo(s*50+angy*s,-14);ctx.lineTo(s*36,0);ctx.closePath();ctx.fill();
-    }
-
-    // Body panel lines
-    ctx.strokeStyle=c.accent;ctx.lineWidth=1;ctx.globalAlpha=0.4;
-    ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(0,-2);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(-12,-16);ctx.lineTo(-12,18);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(12,-16);ctx.lineTo(12,18);ctx.stroke();ctx.globalAlpha=1;
-
-    // Animated arms with energy fists
-    const aL=this.armL*14,aR=this.armR*14;
-    for(let s=-1;s<=1;s+=2){const ax=s*28,ay=12,ah=s>0?aR:aL;
-      ctx.fillStyle=c.body;ctx.strokeStyle=c.accent;ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-s*22+ah,22+ah*.5);ctx.lineTo(ax-s*14+ah,32+ah*.4);
-      ctx.lineTo(ax-s*2,26);ctx.closePath();ctx.fill();ctx.stroke();
-      // Energy fist
-      const fx=ax-s*18+ah,fy=28+ah*.4;
-      const fistG=ctx.createRadialGradient(fx,fy,2,fx,fy,10);
-      fistG.addColorStop(0,'#fff');fistG.addColorStop(0.3,c.glow);fistG.addColorStop(1,'transparent');
-      ctx.fillStyle=fistG;ctx.beginPath();ctx.arc(fx,fy,10+Math.abs(ah)*.4,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(fx,fy,6,0,Math.PI*2);ctx.stroke();
-    }
-
-    // Mechanical legs
-    const lL=this.legL*10,lR=this.legR*10;
-    for(let s=-1;s<=1;s+=2){const lx=s*16,ly=30,lh=s>0?lR:lL;
-      ctx.fillStyle='#1a1a1a';ctx.strokeStyle=c.accent;ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx-s*6+lh*.2,48+lh);ctx.lineTo(lx+s*8+lh*.2,50+lh);
-      ctx.lineTo(lx+s*4,30);ctx.closePath();ctx.fill();ctx.stroke();
-      // Foot/claw
-      ctx.fillStyle=c.accent;
-      ctx.beginPath();ctx.moveTo(lx-s*6+lh*.2,48+lh);ctx.lineTo(lx-s*14+lh*.2,54+lh);ctx.lineTo(lx+s*12+lh*.2,54+lh);
-      ctx.lineTo(lx+s*8+lh*.2,50+lh);ctx.closePath();ctx.fill();
-    }
-
-    // Head with aggressive helmet
-    const headG=ctx.createLinearGradient(0,-30,0,-5);
-    headG.addColorStop(0,'#1a1a1a');headG.addColorStop(0.4,c.accent);headG.addColorStop(1,c.body);
-    ctx.fillStyle=headG;ctx.beginPath();ctx.ellipse(0,-22,19,22,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=c.accent;ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(0,-22,19,22,0,0,Math.PI*2);ctx.stroke();
-
-    // Helmet horns/spikes — larger, more menacing
-    ctx.fillStyle=c.accent;
-    for(let i=-2;i<=2;i++){
-      const cx=i*8.5,ch=18+Math.abs(i)*7;
-      ctx.beginPath();ctx.moveTo(cx-3,-40);ctx.lineTo(cx+3,-40);ctx.lineTo(cx,-40-ch);ctx.closePath();ctx.fill();
-    }
-
-    // Glowing eyes — more dramatic
-    const eSp=8+ra*2,eW=5+ra*3,eH=4+ra*4;
-    ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(-eSp,-24,eW+2,eH+2,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(eSp,-24,eW+2,eH+2,0,0,Math.PI*2);ctx.fill();
-    const eG=ctx.createRadialGradient(-eSp,-25,0,-eSp,-24,eW);
-    eG.addColorStop(0,'#fff');eG.addColorStop(0.2,'#ff0');eG.addColorStop(0.6,c.glow);eG.addColorStop(1,'#000');
-    ctx.fillStyle=eG;ctx.beginPath();ctx.ellipse(-eSp,-24,eW,eH,-0.3,0,Math.PI*2);ctx.fill();
-    const eG2=ctx.createRadialGradient(eSp,-25,0,eSp,-24,eW);
-    eG2.addColorStop(0,'#fff');eG2.addColorStop(0.2,'#ff0');eG2.addColorStop(0.6,c.glow);eG2.addColorStop(1,'#000');
-    ctx.fillStyle=eG2;ctx.beginPath();ctx.ellipse(eSp,-24,eW,eH,0.3,0,Math.PI*2);ctx.fill();
-    // Eye highlights
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=6;
-    ctx.beginPath();ctx.arc(-eSp-1,-25,1.5,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(eSp-1,-25,1.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-
-    // Angry mouth/teeth
-    ctx.strokeStyle='#000';ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.moveTo(-5-ra*2,-12);ctx.quadraticCurveTo(0,-7+ra*2,5+ra*2,-12);ctx.stroke();
-    if(ra>.2){ctx.fillStyle='#fff';
-      for(let t=-1;t<=1;t+=2){ctx.beginPath();ctx.moveTo(t*3,-12);ctx.lineTo(t*3+3*ra,-14-ra*3);ctx.lineTo(t*3-3*ra,-14-ra*3);ctx.closePath();ctx.fill();}
-    }
-
-    // Near-death red lightning cracks
-    if(nearDeath){ctx.strokeStyle='#ff0000';ctx.lineWidth=2;ctx.globalAlpha=0.8;
-      for(let cr=0;cr<5;cr++){const cx2=Math.sin(this.animTime*7+cr)*22,cy2=Math.cos(this.animTime*5+cr)*28;
-        ctx.beginPath();ctx.moveTo(cx2-4,cy2-5);ctx.lineTo(cx2,cy2);ctx.lineTo(cx2+5,cy2+8);ctx.stroke();
-        ctx.fillStyle='#ff4400';ctx.beginPath();ctx.arc(cx2,cy2,3,0,Math.PI*2);ctx.fill();
-      }ctx.globalAlpha=1;
-    }
-    // Nameplate background behind name
-    ctx.fillStyle='rgba(0,0,0,0.7)';
-    roundRect(ctx,-50,-80,100,24,12);ctx.fill();
-    ctx.strokeStyle=this.color.accent;ctx.lineWidth=2;
-    roundRect(ctx,-50,-80,100,24,12);ctx.stroke();
-
-    // === HEALTH BAR ===
-    const barW=80,barH=8,barY=-95;
-    ctx.fillStyle='rgba(0,0,0,.8)';roundRect(ctx,-barW/2-2,barY-2,barW+4,barH+4,3);ctx.fill();
-    // Gradient based on HP
-    const hpG=ctx.createLinearGradient(0,barY,0,barY+barH);
-    if(hpPct>.5){hpG.addColorStop(0,'#2ecc71');hpG.addColorStop(1,'#27ae60')}
-    else if(hpPct>.25){hpG.addColorStop(0,'#f39c12');hpG.addColorStop(1,'#e67e22')}
-    else{hpG.addColorStop(0,'#e74c3c');hpG.addColorStop(1,'#c0392b')}
-    ctx.fillStyle=hpG;ctx.fillRect(-barW/2,barY,barW*hpPct,barH);
-    // HP segments
-    ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=.5;
-    for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(-barW/2+barW*i/5,barY);ctx.lineTo(-barW/2+barW*i/5,barY+barH);ctx.stroke()}
-    // Name with HUGE GLOW - instantly visible to everyone playing
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=14;
-    ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText(this.name,0,barY-10);
-    ctx.fillStyle=this.color.glow;ctx.shadowColor=this.color.glow;ctx.shadowBlur=22;
-    ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(this.name,0,barY-10);
-    ctx.shadowBlur=0;
-    ctx.fillStyle=this.color.accent;ctx.font='bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('BOSS Lv.'+(this.level+1),0,barY+barH+15);
-
-    ctx.shadowColor='transparent';ctx.shadowBlur=0;
-    ctx.restore();
-  }
-}
-
-class Bullet{
-  constructor(x,y,vx,vy,isPlayer,color,shape){
-    this.x=x;this.y=y;this.vx=vx;this.vy=vy;
-    this.isPlayer=isPlayer;
-    this.color=color||(isPlayer?'#f1c40f':'#e74c3c');
-    this.r=isPlayer?3:4;
-    this.shape=shape||'circle';
-    this.age=0;
-    this.pulse=Math.random()*Math.PI*2;
-  }
-  update(){this.x+=this.vx;this.y+=this.vy;this.age++;this.pulse+=.3}
-  draw(ctx){
-    ctx.save();ctx.translate(this.x,this.y);
-    const pulseScale=.8+.2*Math.sin(this.pulse);
-    if(this.isPlayer){
-      ctx.strokeStyle=this.color;ctx.lineWidth=this.r*1.2;ctx.globalAlpha=.3;
-      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-this.vx*1.5,-this.vy*1.5);ctx.stroke();ctx.globalAlpha=1;
-      const pg=ctx.createRadialGradient(0,0,this.r*.3,0,0,this.r*3*pulseScale);
-      pg.addColorStop(0,this.color);pg.addColorStop(.4,this.color+'88');pg.addColorStop(1,'transparent');
-      ctx.fillStyle=pg;ctx.shadowColor=this.color;ctx.shadowBlur=12;
-      ctx.beginPath();ctx.arc(0,0,this.r*3*pulseScale,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=6;
-      ctx.beginPath();ctx.moveTo(0,-this.r*1.8);ctx.lineTo(this.r*1.2,0);ctx.lineTo(0,this.r*1.8);ctx.lineTo(-this.r*1.2,0);ctx.closePath();ctx.fill();
-      ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(0,0,this.r*.5,0,Math.PI*2);ctx.fill();
-    }else{
-      ctx.strokeStyle=this.color;ctx.lineWidth=this.r*.8;ctx.globalAlpha=.25;
-      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-this.vx*1.2,-this.vy*1.2);ctx.stroke();ctx.globalAlpha=1;
-      const eg=ctx.createRadialGradient(0,0,this.r*.4,0,0,this.r*2.5*pulseScale);
-      eg.addColorStop(0,this.color+'dd');eg.addColorStop(.5,this.color+'44');eg.addColorStop(1,'transparent');
-      ctx.fillStyle=eg;ctx.shadowColor=this.color;ctx.shadowBlur=7;
-      ctx.beginPath();ctx.arc(0,0,this.r*2.5*pulseScale,0,Math.PI*2);ctx.fill();
-      const spk=6;
-      ctx.fillStyle=this.color;ctx.shadowColor=this.color;ctx.shadowBlur=5;
-      ctx.beginPath();
-      for(let s=0;s<spk;s+=2){
-        const a1=(Math.PI*2/spk)*s,a2=(Math.PI*2/spk)*(s+1),am=(a1+a2)/2;
-        ctx.lineTo(Math.cos(a1)*this.r*.6,Math.sin(a1)*this.r*.6);
-        ctx.lineTo(Math.cos(am)*this.r*1.5*pulseScale,Math.sin(am)*this.r*1.5*pulseScale);
-      }
-      ctx.closePath();ctx.fill();
-      ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=3;
-      ctx.beginPath();ctx.arc(0,0,this.r*.35,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=.6;
-      ctx.beginPath();ctx.arc(0,0,this.r*.8,0,Math.PI*2);ctx.stroke();
-    }
-    ctx.shadowBlur=0;ctx.restore();
-
-    if(frameCount%2===0&&this.age>1){
-      spawnBulletTrail(this.x,this.y,this.color);
-    }
-  }
-}
-
-class PowerUp{
-  constructor(x,y,type){
-    this.x=x;this.y=y;this.type=type;
-    this.speed=2;this.r=14;this.timer=Math.random()*Math.PI*2;
-  }
-  update(){this.y+=this.speed;this.timer+=.06}
-  draw(ctx){
-    ctx.save();ctx.translate(this.x,this.y);
-    const glow=Math.sin(this.timer)*.3+.7;
-    const colors={spread:'#f1c40f',shield:'#2ecc71',heal:'#e74c3c',bomb:'#e67e22'};
-    const symbols={spread:'S',shield:'盾',heal:'❤',bomb:'爆'};
-    const color=colors[this.type];
-
-    // Outer aura ring (pulsing)
-    const auG=ctx.createRadialGradient(0,0,this.r*.6,0,0,this.r*1.8);
-    auG.addColorStop(0,'transparent');auG.addColorStop(.5,color+'40');auG.addColorStop(1,'transparent');
-    ctx.fillStyle=auG;ctx.beginPath();ctx.arc(0,0,this.r*1.8,0,Math.PI*2);ctx.fill();
-
-    // Double rotating halo rings
-    ctx.lineWidth=2;
-    ctx.strokeStyle=color;ctx.globalAlpha=glow*.5+.2;
-    ctx.beginPath();ctx.arc(0,0,this.r+4,this.timer,this.timer+Math.PI*1.5);ctx.stroke();
-    ctx.strokeStyle='#fff';ctx.globalAlpha=glow*.3+.1;
-    ctx.beginPath();ctx.arc(0,0,this.r+7,-this.timer*.7,-this.timer*.7+Math.PI*1.2);ctx.stroke();
-    ctx.globalAlpha=1;
-
-    // Main orb with gradient
-    const orbG=ctx.createRadialGradient(-2,-2,this.r*.1,0,0,this.r);
-    orbG.addColorStop(0,'#fff');orbG.addColorStop(.3,color);orbG.addColorStop(1,'rgba(0,0,0,.3)');
-    ctx.fillStyle=orbG;ctx.shadowColor=color;ctx.shadowBlur=16*glow;
-    ctx.beginPath();ctx.arc(0,0,this.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-
-    // Orb ring border
-    ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.arc(0,0,this.r,0,Math.PI*2);ctx.stroke();
-
-    // Inner highlight
-    ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.arc(-3,-3,this.r*.35,0,Math.PI*2);ctx.fill();
-
-    // Symbol with shadow
-    ctx.fillStyle='#fff';ctx.shadowColor='rgba(0,0,0,.5)';ctx.shadowBlur=2;
-    ctx.font='bold 13px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(symbols[this.type],0,1);ctx.shadowBlur=0;
-
-    // Floating spark particles around orb
-    if(frameCount%3===0){
-      const sa=this.timer*3+Math.random()*.5;
-      const sr=this.r+6+Math.random()*4;
-      spawnParticle(this.x+Math.cos(sa)*sr,this.y+Math.sin(sa)*sr,Math.cos(sa)*.3,Math.sin(sa)*.3,color,6+Math.random()*8,1+Math.random()*2,'spark',0,.97);
-    }
-
-    ctx.restore();
-  }
-}
-
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
-  ctx.arcTo(x+w,y,x+w,y+r,r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
-  ctx.arcTo(x,y+h,x,y+h-r,r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
-}
-
-function spawnPowerUp(x,y){
-  // Favor spread early (level 0-1), balance later
-  let types;
-  if(level<=0)types=['spread','spread','spread','shield','heal','bomb'];
-  else if(level<=1)types=['spread','spread','shield','shield','heal','bomb'];
-  else types=['spread','spread','shield','shield','heal','bomb'];
-  powerUps.push(new PowerUp(x,y,types[Math.floor(Math.random()*types.length)]));
-}
-
-function useBomb(){
-  if(bombs<=0)return;
-  bombs--;
-  sfxBomb();
-  bombFlash=15;
-  addShake(12,15);
-  enemies.forEach(e=>{score+=e.score;spawnExplosion(e.x,e.y,8)});
-  enemies.length=0;
-  bullets.forEach(b=>{if(!b.isPlayer)spawnExplosion(b.x,b.y,3)});
-  bullets=bullets.filter(b=>b.isPlayer);
-  if(boss&&boss.name==='李亚增')boss.summonedEnemies.length=0;
-}
-
-// ==================== WAVE SYSTEM ====================
-function spawnWave(){
-  const mult=difficulty==='rookie'?0.6:difficulty==='veteran'?1:1.5;
-  const count=Math.floor((3+wavesCleared+level*1.5)*mult);
-  for(let i=0;i<count;i++){
-    const type=Math.random()<.15?'large':Math.random()<.35?'medium':'small';
-    enemies.push(new Enemy(30+Math.random()*(W-60),-30-Math.random()*200,type));
-  }
-}
-
-// ==================== GAME FLOW ====================
-function resetGame(){
-  score=0;
-  if(difficulty==='rookie'){lives=8;bombs=6}
-  else if(difficulty==='veteran'){lives=5;bombs=3}
-  else{lives=3;bombs=1}
-  level=0;
-  enemies=[];bullets=[];powerUps=[];particles.length=0;particleIndex=0;
-  scorePopups.length=0;boss=null;
-  wavesCleared=0;
-  comboCount=0;comboTimer=0;comboDisplay=0;comboFlash=0;
-  rageMode=false;rageTimer=0;lastShockwave=0;
-  bombFlash=0;shakeAmount=0;shakeDuration=0;
-  player=new Player();
-  spawnWave();
-  state=STATE.PLAYING;
-}
-
-function startGame(){
-  if(state!==STATE.MENU&&state!==STATE.DIFF_SELECT)return;
-  initAudio();
-  state=STATE.DIFF_SELECT;
-}
-
-function startBossFight(){
-  state=STATE.BOSS_INTRO;
-  stateTimer=0;bossIntroTimer=110;
-  forceAudio();sfxBossIntro();
-  addShake(8,20);
-  const name=bossNames[level];
-  boss=new Boss(name,level);
-  enemies.forEach(e=>spawnExplosion(e.x,e.y,5));
-  enemies.length=0;
-  bullets=bullets.filter(b=>b.isPlayer);
-}
-
-function nextLevel(){
-  level++;
-  if(level>=bossNames.length){
-    state=STATE.VICTORY;sfxVictory();
-  }else{
-    wavesCleared=0;
-    boss=null;
-    lives=Math.min(lives+(difficulty==='rookie'?2:1),difficulty==='rookie'?8:5);
-    spawnWave();
-    state=STATE.PLAYING;
-  }
-}
-
-// ==================== COLLISION ====================
-function rectCollide(ax,ay,aw,ah,bx,by,bw,bh){
-  return ax-aw/2<bx+bw/2&&ax+aw/2>bx-bw/2&&ay-ah/2<by+bh/2&&ay+ah/2>by-bh/2;
-}
-
-// ==================== MAIN LOOP ====================
-function update(){
-  frameCount++;
-  updateShake();
-
-  if(bombFlash>0)bombFlash--;
-
-  if(state===STATE.MENU||state===STATE.DIFF_SELECT||state===STATE.GAME_OVER||state===STATE.VICTORY)return;
-
-  if(state===STATE.BOSS_INTRO){
-    stateTimer++;
-    if(stateTimer>=bossIntroTimer){stateTimer=0;state=STATE.PLAYING}
-    if(boss)boss.update();
-    return;
-  }
-
-  updateCombo();
-
-  if(rageMode&&frameCount%4===0){
-    spawnParticle(player.x+Math.random()*10-5,player.y+Math.random()*10-5,(Math.random()-.5)*2,(Math.random()-.5)*2,'#ff4444',10+Math.random()*10,2,'glow');
-  }
-
-  player.update();
-  if(lives<=0)return;
-
-  bullets.forEach(b=>b.update());
-  bullets=bullets.filter(b=>b.y>-20&&b.y<H+20&&b.x>-20&&b.x<W+20);
-
-  enemies.forEach(e=>e.update());
-  enemies=enemies.filter(e=>e.y<H+60);
-
-  if(boss){
-    boss.update();
-    if(boss.name==='李亚增'){
-      boss.summonedEnemies.forEach((e,i)=>{
-        if(e.shootTimer<=0&&e.y>0&&e.y<H){
-          e.shootTimer=60+Math.random()*40;
-          const a=Math.atan2(player.y-e.y,player.x-e.x);
-          bullets.push(new Bullet(e.x,e.y,Math.cos(a)*3,Math.sin(a)*3,false,'#e67e22'));
-        }
-      });
-    }
-  }
-
-  powerUps.forEach(p=>p.update());
-  powerUps=powerUps.filter(p=>p.y<H+30);
-
-  particles.forEach(p=>p.update());
-  // Remove dead particles (don't splice, just filter - but with cap we manage via index)
-  for(let i=particles.length-1;i>=0;i--){if(particles[i].life<=0)particles.splice(i,1)}
-
-  scorePopups.forEach(s=>{s.y+=s.vy;s.life--});
-  for(let i=scorePopups.length-1;i>=0;i--){if(scorePopups[i].life<=0)scorePopups.splice(i,1)}
-
-  // COLLISIONS
-  // Player bullets vs enemies
-  for(let b of bullets){
-    if(!b.isPlayer)continue;
-    for(let e of enemies){
-      if(rectCollide(b.x,b.y,6,6,e.x,e.y,e.w,e.h)){
-        b.y=-999;
-        if(e.hit(1)){const idx=enemies.indexOf(e);if(idx>=0)enemies.splice(idx,1)}
-        break;
-      }
-    }
-  }
-  // Player bullets vs boss
-  if(boss&&!boss.entering&&boss.hp>0){
-    for(let b of bullets){
-      if(!b.isPlayer)continue;
-      if(rectCollide(b.x,b.y,6,6,boss.x,boss.y+boss.bodyBob,boss.w,boss.h)){
-        b.y=-999;
-        if(boss.hit(1)){
-          spawnExplosion(boss.x,boss.y,40);
-          boss=null;
-          if(level>=bossNames.length-1){state=STATE.VICTORY;sfxVictory()}
-          else{state=STATE.LEVEL_COMPLETE;levelCompleteTimer=0}
-          addShake(15,20);
-        }
-        break;
-      }
-    }
-  }
-  // Enemy bullets vs player
-  for(let b of bullets){
-    if(b.isPlayer)continue;
-    if(rectCollide(b.x,b.y,8,8,player.x,player.y,player.w-10,player.h-10)){
-      b.y=-999;
-      player.hit();
-      break;
-    }
-  }
-  // Enemies vs player
-  for(let e of enemies){
-    if(rectCollide(e.x,e.y,e.w,e.h,player.x,player.y,player.w-10,player.h-10)){
-      enemies.splice(enemies.indexOf(e),1);
-      spawnExplosion(e.x,e.y,10);
-      player.hit();
-      break;
-    }
-  }
-  // Summoned minions vs player
-  if(boss&&boss.name==='李亚增'){
-    for(let e of boss.summonedEnemies){
-      if(rectCollide(e.x,e.y,e.w,e.h,player.x,player.y,player.w-10,player.h-10)){
-        boss.summonedEnemies.splice(boss.summonedEnemies.indexOf(e),1);
-        spawnExplosion(e.x,e.y,8);
-        player.hit();
-        break;
-      }
-    }
-  }
-  // Player bullets vs summoned minions
-  if(boss&&boss.name==='李亚增'){
-    for(let b of bullets){
-      if(!b.isPlayer)continue;
-      for(let e of boss.summonedEnemies){
-        if(rectCollide(b.x,b.y,6,6,e.x,e.y,e.w,e.h)){
-          b.y=-999;
-          spawnExplosion(e.x,e.y,6);
-          score+=50;addCombo();
-          boss.summonedEnemies.splice(boss.summonedEnemies.indexOf(e),1);
-          break;
-        }
-      }
-    }
-  }
-  // Power ups vs player
-  for(let p of powerUps){
-    if(rectCollide(p.x,p.y,p.r*2,p.r*2,player.x,player.y,player.w,player.h)){
-      sfxPowerUp();
-      // Pickup light column
-      for(let i=0;i<8;i++)spawnParticle(p.x,p.y,Math.random()*2-1,-3-Math.random()*3,p.type==='spread'?'#f1c40f':p.type==='shield'?'#2ecc71':p.type==='heal'?'#e74c3c':'#e67e22',15+Math.random()*15,2+Math.random()*3,'glow');
-      if(p.type==='spread')player.power=Math.min(3,player.power+1);
-      else if(p.type==='shield')player.shield=true;
-      else if(p.type==='heal')lives=Math.min(5,lives+1);
-      else if(p.type==='bomb')bombs=Math.min(5,bombs+1);
-      powerUps.splice(powerUps.indexOf(p),1);
-    }
-  }
-
-  // WAVE MANAGEMENT
-  if(!boss&&state===STATE.PLAYING){
-    if(enemies.length===0){
-      wavesCleared++;
-      if(wavesCleared>=wavesPerLevel)startBossFight();
-      else spawnWave();
-    }
-  }
-
-  // LEVEL COMPLETE
-  if(state===STATE.LEVEL_COMPLETE){
-    levelCompleteTimer++;
-    if(levelCompleteTimer>60)nextLevel();
-  }
-
-  // Bomb key
-  if((keys[' ']||keys['Spacebar'])&&state===STATE.PLAYING){useBomb();keys[' ']=false;keys['Spacebar']=false}
-}
-
-function drawNeonText(ctx,text,x,y,color,size,glowSize){
-  ctx.save();
-  ctx.shadowColor=color;ctx.shadowBlur=glowSize||15;
-  ctx.fillStyle='#fff';ctx.font=`bold ${size}px "PingFang SC","Microsoft YaHei",sans-serif`;ctx.textAlign='center';
-  ctx.fillText(text,x,y);
-  ctx.shadowBlur=0;
-  // Second pass for stronger glow
-  ctx.fillStyle=color;
-  ctx.shadowColor=color;ctx.shadowBlur=(glowSize||15)*.6;
-  ctx.fillText(text,x,y);
-  ctx.shadowBlur=0;
-  ctx.restore();
-}
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.save();
-  const sx=shakeAmount>0?(Math.random()-.5)*shakeAmount:0;
-  const sy=shakeAmount>0?(Math.random()-.5)*shakeAmount:0;
-  ctx.translate(offsetX+sx,offsetY+sy);
-  ctx.scale(scale,scale);
-
-  ctx.beginPath();ctx.rect(0,0,W,H);ctx.clip();
-
-  drawBackground(ctx);
-
-  // Draw particles (additive blending for explosions)
-  ctx.globalCompositeOperation='lighter';
-  particles.forEach(p=>{if(p.type==='glow'||p.type==='spark')p.draw(ctx)});
-  ctx.globalCompositeOperation='source-over';
-  particles.forEach(p=>{if(p.type!=='glow'&&p.type!=='spark')p.draw(ctx)});
-
-  // Draw power ups
-  powerUps.forEach(p=>p.draw(ctx));
-  // Draw bullets
-  bullets.forEach(b=>b.draw(ctx));
-  // Draw enemies
-  enemies.forEach(e=>e.draw(ctx));
-  // Summoned minions
-  if(boss&&boss.name==='李亚增'){
-    boss.summonedEnemies.forEach(e=>{
-      ctx.save();ctx.translate(e.x,e.y);
-      // Glowing minion drone
-      const sg=ctx.createRadialGradient(0,0,3,0,0,e.w/2);
-      sg.addColorStop(0,'#ff9944');sg.addColorStop(0.5,'#cc4400');sg.addColorStop(1,'rgba(100,20,0,0.3)');
-      ctx.fillStyle=sg;
-      ctx.beginPath();
-      ctx.moveTo(0,e.h/2);ctx.lineTo(-e.w/2,-e.h/4);
-      ctx.lineTo(0,-e.h/2);ctx.lineTo(e.w/2,-e.h/4);
-      ctx.closePath();ctx.fill();
-      // Eye dot
-      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,2.5,0,Math.PI*2);ctx.fill();
-      ctx.restore();
-    });
-  }
-  // Draw boss
-  if(boss)boss.draw(ctx);
-  // Draw player
-  if(state!==STATE.BOSS_INTRO)player.draw(ctx);
-
-  // --- NEON UI ---
-  // Score — direct draw with left alignment (not drawNeonText which forces center)
-  ctx.textAlign='left';
-  ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillStyle='#fff';ctx.shadowColor='#f1c40f';ctx.shadowBlur=18;
-  ctx.fillText('⚡ '+score,16,34);
-  ctx.fillStyle='#f1c40f';ctx.shadowBlur=0;
-  ctx.fillText('⚡ '+score,16,34);
-  ctx.shadowBlur=0;
-
-  // Combo counter
-  if(comboDisplay>=5){
-    const comboScale=comboFlash>0?1.3:1;
-    ctx.save();ctx.translate(W/2,60);ctx.scale(comboScale,comboScale);
-    const comboColor=comboDisplay>=50?'#ff4444':comboDisplay>=30?'#ff8800':'#f1c40f';
-    ctx.font=`bold ${comboDisplay>=30?28:22}px "PingFang SC","Microsoft YaHei",sans-serif`;
-    if(comboDisplay>=30){
-      // Gold edge for high combos
-      ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=20;
-      ctx.fillText(comboDisplay+'x COMBO',0,0);
-      ctx.shadowBlur=0;
-    }
-    ctx.fillStyle=comboColor;ctx.shadowColor=comboColor;ctx.shadowBlur=12;
-    ctx.fillText(comboDisplay+'x COMBO',0,0);
-    ctx.shadowBlur=0;
-    ctx.restore();
-  }
-
-  // Rage mode indicator
-  if(rageMode){
-    const rageAlpha=.5+.5*Math.sin(frameCount*.2);
-    ctx.fillStyle=`rgba(255,0,0,${rageAlpha*.3})`;ctx.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('🔥 疯狗模式 🔥',W/2,88);
-  }
-
-  // Right side UI
-  ctx.textAlign='right';
-  // Lives as heart gems
-  let hearts='';
-  for(let i=0;i<lives;i++)hearts+='❤';
-  ctx.fillStyle='#e74c3c';ctx.shadowColor='#e74c3c';ctx.shadowBlur=8;
-  ctx.font='16px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(hearts,W-12,28);ctx.shadowBlur=0;
-
-  // Bombs
-  ctx.fillStyle='#e67e22';ctx.shadowColor='#e67e22';ctx.shadowBlur=6;
-  ctx.fillText('💣 x'+bombs,W-12,50);ctx.shadowBlur=0;
-
-  // Power level with neon
-  const powerName=['','单发','双发','三发'][player.power];
-  ctx.fillStyle='#f1c40f';ctx.shadowColor='#f1c40f';ctx.shadowBlur=5;
-  ctx.fillText('火力: '+powerName,W-12,70);ctx.shadowBlur=0;
-
-  // Difficulty indicator
-  ctx.fillStyle=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowColor=difficulty==='rookie'?'#2ecc71':difficulty==='veteran'?'#e67e22':'#e74c3c';ctx.shadowBlur=5;
-  ctx.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(difficulty==='rookie'?'新手上路':difficulty==='veteran'?'老兵':'疯狗',W-12,88);ctx.shadowBlur=0;
-
-  // Level/wave info
-  if(!boss&&state===STATE.PLAYING){
-    ctx.fillStyle='rgba(255,255,255,.5)';ctx.textAlign='center';ctx.font='13px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('第'+(level+1)+'关 · 波次'+(wavesCleared+1)+'/'+wavesPerLevel+'  Boss:'+bossNames[Math.min(level,bossNames.length-1)],W/2,28);
-  }
-
-  // Score popups
-  scorePopups.forEach(s=>{
-    const a=s.life/40;
-    ctx.fillStyle=`rgba(255,215,0,${a})`;ctx.font='bold 14px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('+'+s.pts,s.x,s.y);
-  });
-
-  // BOSS INTRO OVERLAY
-  if(state===STATE.BOSS_INTRO&&boss){
-    const alpha=stateTimer<20?stateTimer/20:1;
-    ctx.fillStyle=`rgba(0,0,0,${alpha*.8})`;ctx.fillRect(0,0,W,H);
-
-    // Dramatic pulsing vignette
-    const vigPulse=1+.15*Math.sin(stateTimer*.2);
-    const vigG=ctx.createRadialGradient(W/2,H/2,W*.3,W/2,H/2,W*.7*vigPulse);
-    vigG.addColorStop(0,'transparent');vigG.addColorStop(1,'rgba(0,0,0,.6)');
-    ctx.fillStyle=vigG;ctx.fillRect(0,0,W,H);
-
-    // WARNING text - pulsing red
-    if(stateTimer<40){
-      const warnAlpha=Math.abs(Math.sin(stateTimer*.3));
-      ctx.fillStyle=`rgba(255,0,0,${warnAlpha})`;ctx.shadowColor='#ff0000';ctx.shadowBlur=80+Math.sin(stateTimer*.5)*30;
-      ctx.font='bold 72px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-      ctx.fillText('⚠ WARNING ⚠',W/2,H/2-110);
-      ctx.shadowBlur=0;
-    }
-
-    // Boss name - 140px with INFINITE PULSE & COLOR CYCLE
-    const bns=Math.min(1,stateTimer/12);
-    const namePulse=1+.08*Math.sin(stateTimer*.15);
-    const flashCycle=stateTimer*.08;
-    const r=Math.floor(200+55*Math.sin(flashCycle));
-    const g=Math.floor(100+55*Math.sin(flashCycle+2.1));
-    const b=Math.floor(50+55*Math.sin(flashCycle+4.2));
-    const cycleColor=`rgb(${r},${g},${b})`;
-
-    ctx.save();ctx.translate(W/2,H/2-25);ctx.scale(bns*namePulse,bns*namePulse);
-
-    // Dark offset shadow
-    ctx.fillStyle='rgba(0,0,0,.9)';ctx.shadowColor='transparent';ctx.shadowBlur=0;
-    ctx.font='bold 140px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText(boss.name,4,56);
-
-    // White glow layer
-    ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=80+Math.sin(stateTimer*.25)*30;
-    ctx.fillText(boss.name,0,50);
-
-    // Color cycling glow layer
-    ctx.fillStyle=cycleColor;ctx.shadowColor=cycleColor;ctx.shadowBlur=50+Math.sin(stateTimer*.3)*25;
-    ctx.fillText(boss.name,0,50);
-
-    // Boss's own color glow
-    ctx.fillStyle=boss.color.glow;ctx.shadowColor=boss.color.glow;ctx.shadowBlur=30;
-    ctx.fillText(boss.name,0,50);
-
-    // Sharp white outline on top
-    ctx.shadowBlur=0;ctx.shadowColor='transparent';
-    ctx.strokeStyle='#fff';ctx.lineWidth=3;
-    ctx.font='bold 140px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.strokeText(boss.name,0,50);
-
-    // Thick accent stroke
-    ctx.strokeStyle=boss.color.accent;ctx.lineWidth=5;
-    ctx.strokeText(boss.name,0,50);
-
-    ctx.restore();
-
-    // Subtitle
-    const subAlpha=.6+.4*Math.sin(stateTimer*.12);
-    ctx.fillStyle=`rgba(255,255,255,${subAlpha})`;
-    ctx.font='bold 34px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('第 '+(level+1)+' 关 Boss · 准备迎战！',W/2,H/2+70);
-  }
-
-  // LEVEL COMPLETE
-  if(state===STATE.LEVEL_COMPLETE){
-    ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,0,W,H);
-    // KNOCK OUT text
-    const koScale=1+.2*Math.sin(levelCompleteTimer*.15);
-    ctx.save();ctx.translate(W/2,H/2-20);ctx.scale(koScale,koScale);
-    ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=30;
-    ctx.font='bold 42px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('击 败！',0,0);
-    ctx.shadowBlur=0;
-    ctx.fillStyle='#fff';ctx.font='18px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('朋友击破！',0,35);ctx.restore();
-  }
-
-  // GAME OVER
-  if(state===STATE.GAME_OVER){
-    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    drawNeonText(ctx,'被击败了',W/2,H/2-60,'#e74c3c',56,32);
-    ctx.fillStyle='#fff';ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('最终分数: '+score,W/2,H/2+15);
-    ctx.font='20px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('点击屏幕再来挑战',W/2,H/2+60);
-  }
-
-  // VICTORY
-  if(state===STATE.VICTORY){
-    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    drawNeonText(ctx,'大获全胜！',W/2,H/2-70,'#f1c40f',60,38);
-    ctx.fillStyle='#fff';ctx.font='bold 24px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillText('所有朋友都被击败了！',W/2,H/2+5);
-    ctx.font='22px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('最终分数: '+score,W/2,H/2+35);
-    ctx.font='20px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('点击屏幕再来一局',W/2,H/2+80);
-  }
-
-  // DIFFICULTY SELECTION
-  if(state===STATE.DIFF_SELECT){
-    ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,0,W,H);
-    drawNeonText(ctx,'选择难度',W/2,H/2-115,'#fff',38,20);
-    ctx.font='14px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-    ctx.fillStyle='rgba(255,255,255,.5)';
-    ctx.fillText('新手上路：尽情爽玩，火力全开！',W/2,H/2-52);
-    ctx.fillText('老兵：朋友认真了，注意闪避！',W/2,H/2-25);
-    ctx.fillText('疯狗：地狱难度，极限生存！',W/2,H/2+2);
-    // Rookie button
-    const rGlow=difficulty==='rookie'?30:0;
-    ctx.fillStyle='#27ae60';ctx.shadowColor='#27ae60';ctx.shadowBlur=rGlow;
-    roundRect(ctx,W/2-110,H/2+18,220,46,25);ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#fff';ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('🟢 新手上路',W/2,H/2+47);
-    // Veteran button
-    const vGlow=difficulty==='veteran'?30:0;
-    ctx.fillStyle='#e67e22';ctx.shadowColor='#e67e22';ctx.shadowBlur=vGlow;
-    roundRect(ctx,W/2-110,H/2+70,220,46,25);ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#fff';ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('🟠 老 兵',W/2,H/2+99);
-    // Elite button
-    const eGlow=difficulty==='elite'?35:0;
-    ctx.fillStyle='#c0392b';ctx.shadowColor='#c0392b';ctx.shadowBlur=eGlow;
-    roundRect(ctx,W/2-110,H/2+122,220,46,25);ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#fff';ctx.font='bold 22px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('🔴 封 狗',W/2,H/2+151);
-  }
-
-  // MENU OVERLAY
-  if(state===STATE.MENU){
-    ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(0,0,W,H);
-    const titleY=H*.27;
-
-    // Title — bold, layered, commanding
-    ctx.textAlign='center';
-    ctx.shadowColor='#ff4444';ctx.shadowBlur=80;
-    ctx.fillStyle='#fff';ctx.font='bold 68px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('Boss Rush',W/2,titleY);
-    ctx.shadowBlur=0;
-    ctx.fillStyle='#ff2222';ctx.shadowColor='#ff0000';ctx.shadowBlur=45;
-    ctx.font='bold 68px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('Boss Rush',W/2,titleY);
-    ctx.shadowBlur=0;
-
-    // Subtitle
-    ctx.fillStyle='#f39c12';ctx.shadowColor='#f39c12';ctx.shadowBlur=18;
-    ctx.font='bold 28px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('击败你的朋友们',W/2,titleY+68);
-    ctx.shadowBlur=0;
-
-    // Boss list — compact, one line
-    ctx.fillStyle='rgba(255,255,255,.45)';
-    ctx.font='bold 15px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('对手：'+bossNames.join(' · '),W/2,titleY+108);
-
-    // Controls hint — minimal
-    ctx.fillStyle='rgba(255,255,255,.6)';ctx.font='14px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('方向键移动 · 空格炸弹 · 手机滑动操控',W/2,H*.70);
-  }
-
-  // Bomb flash overlay
-  if(bombFlash>0){
-    ctx.fillStyle=`rgba(255,255,255,${bombFlash/15})`;
-    ctx.fillRect(0,0,W,H);
-  }
-
-  ctx.restore();
-
-  // HTML button visibility
-  const startBtn=document.getElementById('start-btn');
-  const bombBtn=document.getElementById('bomb-btn');
-  const exitBtn=document.getElementById('exit-btn');
-  const mobileHint=document.getElementById('mobile-hint');
-  if(state===STATE.MENU){
-    startBtn.style.display='block';startBtn.textContent='挑战朋友';
-    mobileHint.style.display='block';bombBtn.style.display='none';exitBtn.style.display='none';
-  }else if(state===STATE.GAME_OVER||state===STATE.VICTORY){
-    startBtn.style.display='block';
-    startBtn.textContent=state===STATE.VICTORY?'再战一轮':'再来一局';
-    mobileHint.style.display='none';bombBtn.style.display='none';exitBtn.style.display='none';
-  }else if(state===STATE.DIFF_SELECT){
-    startBtn.style.display='none';mobileHint.style.display='none';
-    bombBtn.style.display='none';exitBtn.style.display='block';
-  }else{
-    startBtn.style.display='none';mobileHint.style.display='none';
-    bombBtn.style.display='block';exitBtn.style.display='block';
-  }
-}
-
-let lastTime=0,dt=1;
-function gameLoop(timestamp){
-  if(!lastTime)lastTime=timestamp;
-  dt=Math.min((timestamp-lastTime)/16.667,3); // cap at 3x to prevent spiral
-  lastTime=timestamp;
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-// ==================== INIT ====================
-initBackground();
-preloadBackgroundImages();
-preloadBossImages();
-player=new Player();
-enemies=[];bullets=[];powerUps=[];
-particles.length=0;boss=null;
-gameLoop();
-
-// Keyboard bomb
-window.addEventListener('keydown',e=>{
-  if((e.key===' '||e.key==='Spacebar')&&state===STATE.PLAYING){e.preventDefault();useBomb()}
-});
-</script>
+  <div id="app" class="app-shell" data-screen="home">
+    <div class="hangar-atmosphere" aria-hidden="true">
+      <span class="hangar-beam hangar-beam--left"></span>
+      <span class="hangar-beam hangar-beam--right"></span>
+      <span class="floor-marking">BOSS CONTAINMENT / 07</span>
+    </div>
+
+    <header class="top-rail">
+      <a class="brand" href="./" aria-label="返回好友通缉令首页">
+        <span class="brand__mark" aria-hidden="true">KP</span>
+        <span class="brand__copy">
+          <strong>好友通缉令</strong>
+          <small>BOSS RUSH · 非法改装机库</small>
+        </span>
+      </a>
+      <div class="top-rail__status" aria-label="机库状态">
+        <span class="status-light" aria-hidden="true"></span>
+        <span>机库在线</span>
+        <b>HGR-09</b>
+      </div>
+      <div class="utility-controls" aria-label="辅助设置">
+        <button id="soundButton" class="icon-button" type="button" aria-pressed="true" aria-label="关闭声音">
+          <span aria-hidden="true">声</span>
+        </button>
+        <button id="reduceMotionButton" class="icon-button" type="button" aria-pressed="false" aria-label="开启低动态模式">
+          <span aria-hidden="true">稳</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="screen-stack">
+      <section id="homeScreen" class="screen home-screen" aria-labelledby="homeTitle">
+        <div class="home-intro">
+          <p class="eyebrow"><span>紧急征召</span> 把你最嚣张的好友做成 Boss</p>
+          <h1 id="homeTitle">这次不打怪，<br><em>专打朋友。</em></h1>
+          <p class="home-intro__lead">上传一张头像，写下他的外号。机库会把这张脸焊进机械核心，生成一场只属于你们的 Boss 战。</p>
+          <div class="bounty-strip" aria-label="本局流程">
+            <span><b>01</b> 悬赏建档</span>
+            <i aria-hidden="true"></i>
+            <span><b>02</b> 战机出库</span>
+            <i aria-hidden="true"></i>
+            <span><b>03</b> 击破核心</span>
+          </div>
+          <div class="warning-note">
+            <span aria-hidden="true">!</span>
+            <p><strong>友情风险提示</strong>头像越熟，击败时越解压。</p>
+          </div>
+          <div class="mobile-hero-actions" aria-label="手机快速操作">
+            <button id="mobileUploadButton" class="button button--secondary" type="button">植入头像</button>
+            <button id="mobileQuickPlayButton" class="button button--primary" type="button">快速开战 →</button>
+          </div>
+        </div>
+
+        <div class="boss-bay" role="button" tabindex="0" aria-label="点击植入好友头像">
+          <span class="bay-label bay-label--top">CORE BAY / AVATAR FEED</span>
+          <div class="bay-bracket bay-bracket--left" aria-hidden="true"></div>
+          <div class="bay-bracket bay-bracket--right" aria-hidden="true"></div>
+          <div class="boss-core">
+            <div class="core-orbit core-orbit--outer" aria-hidden="true"></div>
+            <div class="core-orbit core-orbit--inner" aria-hidden="true"></div>
+            <div class="core-clamp core-clamp--top" aria-hidden="true"></div>
+            <div class="core-clamp core-clamp--right" aria-hidden="true"></div>
+            <div class="core-clamp core-clamp--bottom" aria-hidden="true"></div>
+            <div class="core-clamp core-clamp--left" aria-hidden="true"></div>
+            <div class="avatar-port">
+              <span class="avatar-placeholder" aria-hidden="true">好友<br>头像</span>
+              <img id="avatarPreview" alt="好友头像预览" hidden>
+              <canvas id="avatarCanvas" width="480" height="480" aria-hidden="true"></canvas>
+              <span class="avatar-scan" aria-hidden="true"></span>
+            </div>
+            <span class="core-reading core-reading--left" aria-hidden="true">98%</span>
+            <span class="core-reading core-reading--right" aria-hidden="true">LOCK</span>
+          </div>
+          <div class="boss-silhouette" aria-hidden="true">
+            <span class="boss-shoulder boss-shoulder--left"></span>
+            <span class="boss-shoulder boss-shoulder--right"></span>
+            <span class="boss-chassis"></span>
+          </div>
+          <p class="bay-caption"><span>能量核心</span> 点击核心植入头像</p>
+        </div>
+
+        <form class="creator-panel" autocomplete="off" onsubmit="return false">
+          <div class="panel-heading">
+            <span class="panel-heading__index">通缉档案</span>
+            <span class="panel-heading__state">未签发</span>
+          </div>
+
+          <label class="field-label" for="bossNameInput">目标姓名</label>
+          <div class="field-shell">
+            <span aria-hidden="true">ID</span>
+            <input id="bossNameInput" name="bossName" type="text" maxlength="12" placeholder="例如：老王" enterkeyhint="next" autocomplete="off">
+          </div>
+
+          <label class="field-label" for="bossTitleInput">危险外号</label>
+          <div class="field-shell">
+            <span aria-hidden="true">称</span>
+            <input id="bossTitleInput" name="bossTitle" type="text" maxlength="18" placeholder="例如：会议终结者" enterkeyhint="done" autocomplete="off">
+          </div>
+
+          <div class="avatar-upload-row">
+            <label class="upload-button" for="avatarInput">
+              <span class="upload-button__plus" aria-hidden="true">＋</span>
+              <span><strong>植入好友头像</strong><small>支持 JPG、PNG、WebP</small></span>
+            </label>
+            <input id="avatarInput" class="visually-hidden" name="avatar" type="file" accept="image/jpeg,image/png,image/webp">
+            <span class="upload-state" aria-hidden="true">CORE<br>EMPTY</span>
+          </div>
+
+          <div class="creator-actions">
+            <button id="createBossButton" class="button button--primary" type="button">
+              <span>签发通缉令</span><b aria-hidden="true">→</b>
+            </button>
+            <button id="quickPlayButton" class="button button--secondary" type="button">快速开战</button>
+          </div>
+          <button id="shareLinkButton" class="text-action" type="button">
+            <span aria-hidden="true">↗</span> 复制挑战链接给好友
+          </button>
+          <p id="creatorStatus" class="creator-status" role="status" aria-live="polite">填写姓名或直接快速开战。</p>
+        </form>
+
+        <div class="theme-dock">
+          <div class="theme-dock__heading">
+            <span>作战区域</span>
+            <small>选择 Boss 出现地点</small>
+          </div>
+          <div id="themeGrid" class="theme-grid" role="group" aria-label="选择作战区域">
+            <button class="theme-tile is-selected" type="button" data-theme="cyber" aria-pressed="true"><span class="theme-tile__visual theme-tile__visual--cyber"></span><b>霓虹暗网</b><small>CYBER</small></button>
+            <button class="theme-tile" type="button" data-theme="factory" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--factory"></span><b>废钢工厂</b><small>FACTORY</small></button>
+            <button class="theme-tile" type="button" data-theme="forest" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--forest"></span><b>禁区丛林</b><small>FOREST</small></button>
+            <button class="theme-tile" type="button" data-theme="desert" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--desert"></span><b>赤沙坟场</b><small>DESERT</small></button>
+            <button class="theme-tile" type="button" data-theme="space" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--space"></span><b>近地轨道</b><small>SPACE</small></button>
+            <button class="theme-tile" type="button" data-theme="station" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--station"></span><b>废弃月台</b><small>STATION</small></button>
+            <button class="theme-tile" type="button" data-theme="deepsea" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--deepsea"></span><b>深海舱</b><small>DEEPSEA</small></button>
+            <button class="theme-tile" type="button" data-theme="volcano" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--volcano"></span><b>熔岩反应堆</b><small>VOLCANO</small></button>
+            <button class="theme-tile" type="button" data-theme="tokyo" aria-pressed="false"><span class="theme-tile__visual theme-tile__visual--tokyo"></span><b>东京警戒区</b><small>TOKYO</small></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="loadoutScreen" class="screen loadout-screen" aria-labelledby="loadoutTitle" hidden>
+        <header class="screen-header">
+          <div>
+            <p class="eyebrow"><span>战机出库</span> 四台非法改装机</p>
+            <h2 id="loadoutTitle">选一台，去拆了他的核心。</h2>
+          </div>
+          <div class="screen-header__code">LOADOUT<br><b>02 / 03</b></div>
+        </header>
+
+        <div id="fighterGrid" class="fighter-grid" role="radiogroup" aria-label="选择战机">
+          <button class="fighter-card is-selected" type="button" data-fighter="ray" role="radio" aria-checked="true">
+            <span class="fighter-card__number">F-01</span>
+            <span class="fighter-figure fighter-figure--ray" aria-hidden="true"><i></i></span>
+            <span class="fighter-card__info"><strong>电鳐</strong><small>高速突袭机</small></span>
+            <span class="fighter-stats"><i><b>机动</b><em style="--level: 88%"></em></i><i><b>火力</b><em style="--level: 68%"></em></i><i><b>装甲</b><em style="--level: 44%"></em></i></span>
+            <span class="fighter-skill">被动 · 连击充能</span>
+          </button>
+          <button class="fighter-card" type="button" data-fighter="falcon" role="radio" aria-checked="false">
+            <span class="fighter-card__number">F-02</span>
+            <span class="fighter-figure fighter-figure--falcon" aria-hidden="true"><i></i></span>
+            <span class="fighter-card__info"><strong>猎隼</strong><small>重火力截击机</small></span>
+            <span class="fighter-stats"><i><b>机动</b><em style="--level: 66%"></em></i><i><b>火力</b><em style="--level: 92%"></em></i><i><b>装甲</b><em style="--level: 52%"></em></i></span>
+            <span class="fighter-skill">被动 · 穿甲弹舱</span>
+          </button>
+          <button class="fighter-card" type="button" data-fighter="turtle" role="radio" aria-checked="false">
+            <span class="fighter-card__number">F-03</span>
+            <span class="fighter-figure fighter-figure--turtle" aria-hidden="true"><i></i></span>
+            <span class="fighter-card__info"><strong>玄甲</strong><small>护盾轰炸机</small></span>
+            <span class="fighter-stats"><i><b>机动</b><em style="--level: 42%"></em></i><i><b>火力</b><em style="--level: 72%"></em></i><i><b>装甲</b><em style="--level: 96%"></em></i></span>
+            <span class="fighter-skill">被动 · 受击回盾</span>
+          </button>
+          <button class="fighter-card is-locked" type="button" data-fighter="ghost" role="radio" aria-checked="false" aria-disabled="true" disabled>
+            <span class="fighter-card__number">F-04</span>
+            <span class="fighter-lock" data-lock-label>经典指令解锁</span>
+            <span class="fighter-figure fighter-figure--ghost" aria-hidden="true"><i></i></span>
+            <span class="fighter-card__info"><strong>幽灵</strong><small>试验型隐身机</small></span>
+            <span class="fighter-stats"><i><b>机动</b><em style="--level: 100%"></em></i><i><b>火力</b><em style="--level: 84%"></em></i><i><b>装甲</b><em style="--level: 38%"></em></i></span>
+            <span class="fighter-skill">机密数据已封锁</span>
+          </button>
+        </div>
+
+        <footer class="loadout-footer">
+          <button id="backHomeButton" class="button button--secondary" type="button">← 返回机库</button>
+          <p><kbd>WASD</kbd> 移动　<kbd>Shift</kbd> 冲刺　<kbd>空格</kbd> 终极技能</p>
+          <button id="launchButton" class="button button--primary button--launch" type="button"><span>启动战机</span><b aria-hidden="true">▶</b></button>
+        </footer>
+      </section>
+
+      <section id="gameScreen" class="screen game-screen" aria-label="Boss 战斗区域" hidden>
+        <canvas id="gameCanvas" tabindex="0" aria-label="Boss Rush 游戏画面">当前浏览器不支持 Canvas 游戏画面。</canvas>
+        <div class="game-vignette" aria-hidden="true"></div>
+
+        <div class="boss-hud">
+          <div class="boss-hud__identity">
+            <span class="hud-avatar" aria-hidden="true"></span>
+            <span><small>通缉目标</small><strong id="bossNameHud">老王</strong><em id="bossTitleHud">会议终结者</em></span>
+          </div>
+          <div class="boss-health">
+            <div class="boss-health__meta"><span id="phaseLabel">第一阶段</span><b>BOSS HP</b></div>
+            <div class="meter meter--boss"><span id="bossHpFill"></span></div>
+          </div>
+        </div>
+
+        <div class="combat-data">
+          <div><small>连击</small><strong id="comboValue">×0</strong></div>
+          <div><small>得分</small><strong id="scoreValue">000000</strong></div>
+          <div><small>倒计时</small><strong id="timerValue">00:45</strong></div>
+        </div>
+
+        <div class="player-hud">
+          <div class="player-hud__row"><span>机体完整度</span><b>PLAYER HP</b></div>
+          <div class="meter meter--player"><span id="playerHpFill"></span></div>
+          <div class="player-hud__row player-hud__row--shield"><span>能量护盾</span><b>SHIELD</b></div>
+          <div class="meter meter--shield"><span id="shieldFill"></span></div>
+        </div>
+
+        <div id="tauntToast" class="taunt-toast" role="status" aria-live="polite" aria-atomic="true" hidden>就这点火力？</div>
+
+        <button id="pauseButton" class="pause-button" type="button" aria-label="暂停游戏">Ⅱ</button>
+        <div class="mobile-combat-controls" aria-label="战斗操作">
+          <button id="dashButton" class="combat-button combat-button--dash" type="button"><span>冲刺</span><small>DASH</small></button>
+          <button id="ultimateButton" class="combat-button combat-button--ultimate" type="button"><span>终极</span><small>ULT</small></button>
+        </div>
+      </section>
+
+      <section id="upgradeScreen" class="screen overlay-screen upgrade-screen" aria-labelledby="upgradeTitle" hidden>
+        <div class="overlay-panel upgrade-panel">
+          <header>
+            <p class="eyebrow"><span>非法改装</span> 仅本局生效</p>
+            <h2 id="upgradeTitle">拆一件 Boss 零件，装到自己身上。</h2>
+            <p id="upgradeSubtitle">击破阶段装甲，夺取一件 Boss 模块。</p>
+          </header>
+          <div id="upgradeChoices" class="upgrade-choices" role="group" aria-label="选择一项升级">
+            <button class="upgrade-card" type="button" data-upgrade="overdrive"><span>01</span><i aria-hidden="true">⚡</i><strong>超频弹仓</strong><p>射速提升 25%，持续火力更密集。</p><small>攻击型</small></button>
+            <button class="upgrade-card" type="button" data-upgrade="shield"><span>02</span><i aria-hidden="true">⬡</i><strong>赃物护盾</strong><p>立即恢复护盾，并提高护盾上限。</p><small>生存型</small></button>
+            <button class="upgrade-card" type="button" data-upgrade="crit"><span>03</span><i aria-hidden="true">✦</i><strong>核心破解器</strong><p>暴击率提升，优先撕开 Boss 装甲。</p><small>爆发型</small></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="resultScreen" class="screen result-screen" aria-labelledby="resultTitle" hidden>
+        <div class="result-wanted">
+          <span class="result-wanted__serial">CASE #BR-0907</span>
+          <div id="resultStamp" class="result-stamp">已击破</div>
+          <p class="eyebrow"><span>战斗结案</span> 赏金已结算</p>
+          <h2 id="resultTitle">好友核心，成功拆除。</h2>
+          <p id="resultSummary" class="result-summary">你用一轮暴力改装，终结了这位“会议终结者”。</p>
+          <dl id="resultStats" class="result-stats">
+            <div><dt>最终得分</dt><dd>086420</dd></div>
+            <div><dt>最高连击</dt><dd>×42</dd></div>
+            <div><dt>战斗用时</dt><dd>01:36</dd></div>
+            <div><dt>机体剩余</dt><dd>68%</dd></div>
+          </dl>
+          <div class="result-actions">
+            <button id="shareResultButton" class="button button--primary" type="button"><span>把战绩甩给他</span><b aria-hidden="true">↗</b></button>
+            <button id="rematchButton" class="button button--secondary" type="button">再打一遍</button>
+            <button id="createAnotherButton" class="text-action" type="button">换个好友继续通缉</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="introOverlay" class="intro-overlay" aria-hidden="true" hidden>
+      <div class="intro-overlay__warning">WARNING · UNAUTHORIZED BOSS SIGNAL</div>
+      <div class="intro-overlay__core" aria-hidden="true"><span></span></div>
+      <p>高危目标已接入</p>
+      <strong>机械核心启动</strong>
+      <small>核心启动中</small>
+    </div>
+  </div>
 </body>
 </html>
