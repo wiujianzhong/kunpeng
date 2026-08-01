@@ -1,0 +1,23 @@
+{
+  "provider": "HeyGen audio catalog",
+  "variants": {
+    "phase-1.mp3": {
+      "track_id": "c73382554050410ea33e8ed40d48012c",
+      "description": "cyberpunk industrial dark synthwave upbeat background music",
+      "source_duration_seconds": 15,
+      "treatment": "低频铺垫与轻量滤波"
+    },
+    "phase-2.mp3": {
+      "track_id": "a61c9fc20ba5460e81ffaaf7a51ff9af",
+      "description": "high-energy cyberpunk synthwave, heavy bass, fast-paced anime action beats",
+      "source_duration_seconds": 42,
+      "treatment": "高速战斗层与无缝循环"
+    },
+    "phase-3.mp3": {
+      "track_id": "1dda7dbf31fc442d80c468a9636505e7",
+      "description": "fast-paced cinematic cyber electronic beat with heavy bass hits",
+      "source_duration_seconds": 55,
+      "treatment": "动态压缩、狂暴增强与无缝循环"
+    }
+  }
+}

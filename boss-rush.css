@@ -477,7 +477,7 @@ canvas {
 .bay-label {
   position: absolute;
   z-index: 2;
-  color: var(--dim);
+  color: var(--muted);
   font: 600 0.6rem/1 var(--data);
   letter-spacing: 0.12em;
 }
@@ -843,6 +843,89 @@ canvas {
 
 .field-shell input::placeholder {
   color: var(--dim);
+}
+
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.voice-chip {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 8px;
+  border: 1px solid rgba(232, 225, 208, 0.18);
+  color: var(--dim);
+  background: rgba(232, 225, 208, 0.035);
+  text-align: left;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.voice-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: transparent;
+}
+
+.voice-chip b,
+.voice-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-chip b {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.voice-chip small {
+  font: 600 0.75rem/1 var(--data);
+}
+
+.voice-chip:hover,
+.voice-chip:focus-visible {
+  border-color: rgba(77, 214, 199, 0.55);
+  color: var(--bone);
+  transform: translateY(-1px);
+}
+
+.voice-chip.is-selected {
+  border-color: var(--energy);
+  color: var(--energy);
+  background: linear-gradient(135deg, rgba(77, 214, 199, 0.14), rgba(77, 214, 199, 0.035));
+  box-shadow: inset 0 0 18px rgba(77, 214, 199, 0.05);
+}
+
+.voice-chip.is-selected::before {
+  background: var(--energy);
+  box-shadow: 0 0 12px var(--energy);
+}
+
+.voice-chip.is-selected b {
+  color: var(--bone);
+}
+
+.voice-chip.is-loading {
+  animation: status-pulse 760ms ease-in-out infinite;
+}
+
+.voice-chip.is-playing {
+  box-shadow: inset 0 0 22px rgba(77, 214, 199, 0.11), 0 0 16px rgba(77, 214, 199, 0.16);
+}
+
+.voice-chip.is-playing::before {
+  animation: status-pulse 520ms ease-in-out infinite;
+}
+
+.voice-chip.is-error {
+  border-color: var(--danger);
 }
 
 .avatar-upload-row {
@@ -1384,11 +1467,63 @@ canvas {
   border-top: 1px solid var(--line);
 }
 
-.loadout-footer p {
-  margin: 0;
+.difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(86px, 118px));
+  justify-content: center;
+  gap: 6px;
+}
+
+.difficulty-chip {
+  min-height: 46px;
+  padding: 7px 10px;
+  border: 1px solid rgba(232, 225, 208, 0.18);
   color: var(--dim);
-  font-size: 0.67rem;
-  text-align: center;
+  background: rgba(232, 225, 208, 0.035);
+  font-family: var(--body);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.difficulty-chip b,
+.difficulty-chip small {
+  display: block;
+}
+
+.difficulty-chip b {
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+
+.difficulty-chip small {
+  margin-top: 4px;
+  font: 500 0.56rem/1 var(--body);
+  opacity: 1;
+}
+
+.difficulty-chip:hover,
+.difficulty-chip:focus-visible {
+  color: var(--bone);
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+}
+
+.difficulty-chip.is-selected {
+  color: var(--cyan);
+  border-color: currentColor;
+  background: rgba(77, 214, 199, 0.1);
+  box-shadow: inset 3px 0 currentColor, 0 0 20px rgba(77, 214, 199, 0.08);
+}
+
+.difficulty-chip[data-difficulty="normal"].is-selected {
+  color: var(--yellow);
+  background: rgba(246, 198, 61, 0.09);
+}
+
+.difficulty-chip[data-difficulty="hard"].is-selected {
+  color: var(--danger);
+  background: rgba(255, 73, 111, 0.09);
 }
 
 kbd {
@@ -2058,6 +2193,7 @@ kbd {
   }
 
   .creator-panel .panel-heading,
+  .creator-panel .voice-grid,
   .creator-panel .avatar-upload-row,
   .creator-panel .creator-actions,
   .creator-panel > .text-action,
@@ -2144,8 +2280,14 @@ kbd {
     grid-template-columns: 1fr 1fr;
   }
 
-  .loadout-footer p {
-    display: none;
+  .difficulty-grid {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+  }
+
+  .loadout-footer > .button {
+    grid-row: 2;
   }
 
   .boss-hud {
@@ -2350,6 +2492,16 @@ kbd {
     grid-template-columns: 1fr;
   }
 
+  .voice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-chip {
+    min-height: 48px;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
   .theme-grid {
     grid-template-columns: repeat(9, 92px);
     margin-right: calc(var(--safe-right) * -1);
@@ -2404,6 +2556,15 @@ kbd {
     min-width: 0;
     padding: 0 11px;
     font-size: 0.68rem;
+  }
+
+  .difficulty-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .difficulty-chip {
+    min-width: 0;
+    padding-inline: 8px;
   }
 
   .boss-hud__identity {

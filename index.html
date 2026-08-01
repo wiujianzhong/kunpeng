@@ -121,6 +121,13 @@
             <input id="bossTitleInput" name="bossTitle" type="text" maxlength="18" placeholder="例如：会议终结者" enterkeyhint="done" autocomplete="off">
           </div>
 
+          <span class="field-label">Boss 声线 · 点击可试听</span>
+          <div id="voiceGrid" class="voice-grid" role="radiogroup" aria-label="选择 Boss 声线">
+            <button class="voice-chip is-selected" type="button" data-voice="buddy" role="radio" aria-checked="true"><b>嘴硬损友</b><small>欠揍 · 灵活</small></button>
+            <button class="voice-chip" type="button" data-voice="queen" role="radio" aria-checked="false"><b>冷面女王</b><small>克制 · 压迫</small></button>
+            <button class="voice-chip" type="button" data-voice="veteran" role="radio" aria-checked="false"><b>机械老炮</b><small>低沉 · 广播</small></button>
+          </div>
+
           <div class="avatar-upload-row">
             <label class="upload-button" for="avatarInput">
               <span class="upload-button__plus" aria-hidden="true">＋</span>
@@ -204,8 +211,12 @@
 
         <footer class="loadout-footer">
           <button id="backHomeButton" class="button button--secondary" type="button">← 返回机库</button>
-          <p><kbd>WASD</kbd> 移动　<kbd>Shift</kbd> 冲刺　<kbd>空格</kbd> 终极技能</p>
-          <button id="launchButton" class="button button--primary button--launch" type="button"><span>启动战机</span><b aria-hidden="true">▶</b></button>
+          <div id="difficultyGrid" class="difficulty-grid" role="radiogroup" aria-label="挑战难度">
+            <button class="difficulty-chip is-selected" type="button" data-difficulty="easy" role="radio" aria-checked="true"><b>01 轻松</b><small>适合试玩</small></button>
+            <button class="difficulty-chip" type="button" data-difficulty="normal" role="radio" aria-checked="false"><b>02 标准</b><small>完整体验</small></button>
+            <button class="difficulty-chip" type="button" data-difficulty="hard" role="radio" aria-checked="false"><b>03 疯狂</b><small>高压弹幕</small></button>
+          </div>
+          <button id="launchButton" class="button button--primary button--launch" type="button"><span>轻松 · 启动战机</span><b aria-hidden="true">▶</b></button>
         </footer>
       </section>
 
