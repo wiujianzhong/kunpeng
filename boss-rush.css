@@ -2587,9 +2587,11 @@ kbd {
   .taunt-toast,
   .taunt-toast.radio {
     top: 36%;
-    width: calc(100% - 32px);
+    width: calc(100% - 48px);
     max-width: none;
     padding: 10px 14px;
+    white-space: normal;
+    word-break: break-all;
     overflow-wrap: anywhere;
   }
 
@@ -2617,7 +2619,18 @@ kbd {
   }
 
   .overlay-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     padding: 24px 16px;
+  }
+
+  .upgrade-panel h2 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: clamp(1.9rem, 9vw, 2.5rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
   }
 
   .upgrade-card {

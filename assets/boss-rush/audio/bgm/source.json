@@ -2,22 +2,22 @@
   "provider": "HeyGen audio catalog",
   "variants": {
     "phase-1.mp3": {
-      "track_id": "c73382554050410ea33e8ed40d48012c",
-      "description": "cyberpunk industrial dark synthwave upbeat background music",
-      "source_duration_seconds": 15,
-      "treatment": "低频铺垫与轻量滤波"
+      "track_id": "483c5653a3084c54b9ed611e7bf50301",
+      "description": "modern cinematic anime action, heavy synth bass, fast orchestral strings, high energy",
+      "source_duration_seconds": 35,
+      "treatment": "裁去尾部空拍、重鼓与低频增强、动态压缩、交叉循环并加25毫秒接缝淡化"
     },
     "phase-2.mp3": {
-      "track_id": "a61c9fc20ba5460e81ffaaf7a51ff9af",
-      "description": "high-energy cyberpunk synthwave, heavy bass, fast-paced anime action beats",
-      "source_duration_seconds": 42,
-      "treatment": "高速战斗层与无缝循环"
+      "track_id": "f9c8c93e4e564770b63e3f725f8b6dc2",
+      "description": "energetic fast-paced synth rock, high-octane anime battle theme",
+      "source_duration_seconds": 51,
+      "treatment": "裁去尾部空拍、电子摇滚加速层、鼓组强化、交叉循环并加25毫秒接缝淡化"
     },
     "phase-3.mp3": {
-      "track_id": "1dda7dbf31fc442d80c468a9636505e7",
-      "description": "fast-paced cinematic cyber electronic beat with heavy bass hits",
-      "source_duration_seconds": 55,
-      "treatment": "动态压缩、狂暴增强与无缝循环"
+      "track_id": "be9672fbe5144ef2b7204f7e70c70630",
+      "description": "high energy cinematic hybrid, aggressive synth pulses, dramatic orchestral build, gaming hype",
+      "source_duration_seconds": 62,
+      "treatment": "裁去尾部空拍、狂暴低频、强压缩、亮度提升、交叉循环并加25毫秒接缝淡化"
     }
   }
 }
